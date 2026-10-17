@@ -11,22 +11,35 @@ Full-stack AI assistant: streaming chat, autonomous research, tool-using agent, 
 - **Free models**: NVIDIA NIM (`nvapi-…`) and OpenRouter (`:free` models) with automatic cross-provider fallback
 - Voice input/readout (browser Web Speech API), Markdown export, usage meter, PWA, SQLite persistence
 
-## Quick start
+## Quick start (any laptop)
 
 ```bash
-# 1. deps
-python3 -m venv .venv
-.venv/bin/pip install fastapi uvicorn httpx openai python-dotenv pypdf beautifulsoup4 ddgs pytest ruff
+# 0. prerequisites: git + Python 3.11+ (https://python.org)
 
-# 2. keys
+# 1. get the code (repo is public)
+git clone https://github.com/subhanbhatti50134-jpg/nyvexa.git
+cd nyvexa
+
+# 2. deps
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+
+# 3. keys — secrets are NOT in the repo; recreate the file
 cp backend/.env.example backend/.env
 # edit backend/.env → at least one of NVIDIA_API_KEY / OPENROUTER_API_KEY
+# (optionally GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET for the Google button)
 
-# 3. run (port 8300)
+# 4. run (port 8300)
 .venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8300
 ```
 
 Open http://localhost:8300 → **Sign up** (the first account inherits any pre-existing local history).
+
+Windows (PowerShell): replace `.venv/bin/` with `.venv\Scripts\`, and start with
+`py -m venv .venv` then `.venv\Scripts\python -m uvicorn backend.main:app --port 8300`.
+
+Data (users, conversations, uploads) lives in `data/` next to the app — it is
+gitignored, so a fresh clone starts with an empty database.
 
 ## Google login (optional)
 
