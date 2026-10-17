@@ -130,7 +130,11 @@ export class ChatApp {
   }
 
   async loadConversation(id) {
-    if (!id || this.busy) return;
+    if (!id) {
+      this.clear(); // New chat button passes null — reset the session
+      return;
+    }
+    if (this.busy) return;
     try {
       const data = await api(`/api/conversations/${id}`);
       const conv = data.conversation;
