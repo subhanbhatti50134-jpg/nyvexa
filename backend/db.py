@@ -71,6 +71,13 @@ CREATE TABLE IF NOT EXISTS rag_chunks (
     text TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_file ON rag_chunks(file_id);
+CREATE TABLE IF NOT EXISTS memories (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id);
 """
 
 
@@ -519,3 +526,66 @@ def all_chunks(user_id: str) -> list[dict[str, Any]]:
             (user_id,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# ---------- long-term user memory ----------
+
+MEMORY_CAP = 30
+
+
+def list_memories(user_id: str, limit: int = MEMORY_CAP) -> list[dict[str, Any]]:
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, text, created_at FROM memories WHERE user_id=? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (user_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def memory_block(user_id: str, max_items: int = 12) -> str:
+    """Human-readable bullet list of memories for injection into system prompts."""
+    items = list_memories(user_id, limit=max_items)
+    if not items:
+        return ""
+    return "\n".join(f"- {m['text']}" for m in items)
+
+
+def add_memory(user_id: str, text: str) -> bool:
+    """Store a memory (deduped, capped). Returns True if added."""
+    text = " ".join(text.strip().split())[:200]
+    if not text:
+        return False
+    with get_db() as db:
+        existing = {
+            r["text"].lower()
+            for r in db.execute(
+                "SELECT text FROM memories WHERE user_id=?", (user_id,)
+            ).fetchall()
+        }
+        if text.lower() in existing:
+            return False
+        db.execute(
+            "INSERT INTO memories (id, user_id, text, created_at) VALUES (?,?,?,?)",
+            (_new_id(), user_id, text, time.time()),
+        )
+        db.execute(
+            "DELETE FROM memories WHERE user_id=? AND id NOT IN "
+            "(SELECT id FROM memories WHERE user_id=? ORDER BY created_at DESC LIMIT ?)",
+            (user_id, user_id, MEMORY_CAP),
+        )
+    return True
+
+
+def delete_memory(memory_id: str, user_id: str) -> bool:
+    with get_db() as db:
+        cur = db.execute(
+            "DELETE FROM memories WHERE id=? AND user_id=?", (memory_id, user_id)
+        )
+        return cur.rowcount > 0
+
+
+def clear_memories(user_id: str) -> int:
+    with get_db() as db:
+        cur = db.execute("DELETE FROM memories WHERE user_id=?", (user_id,))
+        return cur.rowcount

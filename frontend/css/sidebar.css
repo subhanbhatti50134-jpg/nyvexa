@@ -204,6 +204,34 @@
 }
 .kb__file-del:hover { color: #fda4af; }
 
+/* long-term memory panel */
+.memory__count {
+  font-weight: 500;
+  color: var(--nv-text-faint);
+  letter-spacing: 0;
+  text-transform: none;
+  margin-left: 4px;
+}
+
+.memory__hint {
+  font-size: 0.7rem;
+  color: var(--nv-text-faint);
+  line-height: 1.5;
+  margin: 0;
+}
+
+#memory-list .kb__file-name { max-width: 210px; }
+
+#memory-clear {
+  align-self: stretch;
+  border: 1px solid rgba(253, 164, 175, 0.25);
+  color: #fda4af;
+}
+#memory-clear:hover:not(:disabled) {
+  background: rgba(253, 164, 175, 0.08);
+  border-color: rgba(253, 164, 175, 0.45);
+}
+
 /* message actions (edit / regenerate / copy / speak) */
 .msg-actions {
   display: flex;

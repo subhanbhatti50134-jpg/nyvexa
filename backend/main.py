@@ -20,6 +20,7 @@ from backend.routers.auth import router as auth_router
 from backend.routers.chat import router as chat_router
 from backend.routers.files import router as files_router
 from backend.routers.history import router as history_router
+from backend.routers.memory import router as memory_router
 
 settings = get_settings()
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -42,6 +43,7 @@ app.include_router(chat_router)
 app.include_router(history_router)
 app.include_router(files_router)
 app.include_router(auth_router)
+app.include_router(memory_router)
 
 if FRONTEND_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

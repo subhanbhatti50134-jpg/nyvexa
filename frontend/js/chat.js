@@ -253,6 +253,16 @@ export class ChatApp {
     this.sse.onEnd = (info) => this.#handleEnd(info);
 
     this.loadKnowledgeBase();
+    this.loadMemory();
+    $("#memory-clear")?.addEventListener("click", async () => {
+      try {
+        await api("/api/memory", { method: "DELETE" });
+        this.loadMemory();
+        toast("Memory cleared");
+      } catch (err) {
+        toast(err.message, "error");
+      }
+    });
   }
 
   #autosize() {
@@ -568,6 +578,9 @@ export class ChatApp {
           }
         }
         if (data.conversation_id) this.historyPanel.load();
+        // Background memory extraction finishes a few seconds after the turn
+        this.loadMemory();
+        setTimeout(() => this.loadMemory(), 12000);
         break;
       }
 
@@ -741,6 +754,47 @@ export class ChatApp {
             await api(`/api/files/${f.id}`, { method: "DELETE" });
             this.loadKnowledgeBase();
             toast("Removed from knowledge base");
+          } catch (err) {
+            toast(err.message, "error");
+          }
+        });
+        list.appendChild(li);
+      }
+    } catch {
+      /* not critical */
+    }
+  }
+
+  async loadMemory() {
+    const list = $("#memory-list");
+    const count = $("#memory-count");
+    const clearBtn = $("#memory-clear");
+    if (!list) return;
+    try {
+      const data = await api("/api/memory");
+      const items = data.memories || [];
+      list.innerHTML = "";
+      if (count) count.textContent = items.length ? `(${items.length})` : "";
+      if (clearBtn) clearBtn.hidden = !items.length;
+      if (!items.length) {
+        const li = el("li", "kb__file");
+        const span = el("span", "kb__file-name", { text: "Nothing remembered yet — facts appear after a few chats." });
+        span.style.opacity = "0.55";
+        li.appendChild(span);
+        list.appendChild(li);
+        return;
+      }
+      for (const m of items) {
+        const li = el("li", "kb__file");
+        li.innerHTML = `
+          <span class="kb__file-name"></span>
+          <button class="kb__file-del" title="Forget this">✕</button>`;
+        li.querySelector(".kb__file-name").textContent = m.text;
+        li.querySelector(".kb__file-name").title = m.text;
+        li.querySelector(".kb__file-del").addEventListener("click", async () => {
+          try {
+            await api(`/api/memory/${m.id}`, { method: "DELETE" });
+            this.loadMemory();
           } catch (err) {
             toast(err.message, "error");
           }

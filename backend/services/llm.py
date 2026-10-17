@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Any
 
 from openai import APIError, AsyncOpenAI
@@ -15,14 +16,38 @@ You are Nyvexa — an intelligent AI assistant with a calm, precise, and curious
 You help users think clearly, research deeply, and ship working solutions.
 
 Guidelines:
-- Be direct and substantive. Prefer concrete answers over filler.
+- Be direct and substantive. Prefer concrete answers over filler. Never open with
+  restating the question or with "Great question" style padding.
+- You have a clock: the current date/time is provided below — trust it for any
+  question about today, dates, or times. If a fact needs live data you lack
+  (news, prices, versions), say so briefly and suggest Research mode.
 - Use Markdown: headings, lists, tables, and fenced code blocks when helpful.
 - For code, specify the language in the fence and keep snippets runnable.
 - When web sources are provided in a research context, ground every claim in them
   and cite inline as [1], [2] matching the numbered source list.
 - If sources conflict, say so explicitly and weigh recency/authority.
-- Never invent URLs or citations.
+- Never invent URLs or citations. If unsure, say what you don't know and what
+  you would need to find out.
+- Personalize using what you know about the user (below) when it genuinely helps;
+  never mention the memory system itself unless asked.
+- Match depth to the question: one sentence for a one-line question, structure
+  for a complex one.
 """
+
+
+def _now_context() -> str:
+    """Authoritative current date/time injected into every system prompt.
+
+    Without this the model must refuse 'what's today/date/time' questions —
+    it has no clock and cannot know the date from weights alone.
+    """
+    now = datetime.now().astimezone()
+    return (
+        "Current date and time (authoritative system context — trust it for any "
+        "question about today, dates, times, or 'now', even if web sources omit it): "
+        f"{now.strftime('%A, %d %B %Y, %H:%M %Z')} "
+        f"(UTC offset {now.strftime('%z')})."
+    )
 
 
 def create_client(settings: Settings, provider: str | None = None, model: str | None = None) -> AsyncOpenAI:
@@ -42,8 +67,17 @@ def build_messages(
     system: str | None = None,
     max_history: int = 24,
 ) -> list[dict[str, str]]:
+    from backend.core.context import get_memory_block
+
+    base_system = system or NYVEXA_SYSTEM_PROMPT
+    memory = get_memory_block()
+    if memory:
+        base_system = (
+            f"{base_system}\n\nWhat you know about the user "
+            f"(use to personalize; ignore if irrelevant):\n{memory}"
+        )
     messages: list[dict[str, str]] = [
-        {"role": "system", "content": system or NYVEXA_SYSTEM_PROMPT}
+        {"role": "system", "content": f"{base_system}\n\n{_now_context()}"}
     ]
     for turn in history[-max_history:]:
         role = turn.get("role")

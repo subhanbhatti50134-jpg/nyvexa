@@ -14,13 +14,24 @@ from pydantic import BaseModel, Field
 
 from backend import db
 from backend.core.config import get_settings
-from backend.core.context import set_user_id
+from backend.core.context import set_memory_block, set_user_id
 from backend.services.agent import stream_agent
 from backend.services.llm import create_client
+from backend.services.memory import extract_memories
 from backend.services.rag import retrieve as rag_retrieve
 from backend.services.research import run_chat_only, stream_research
+from backend.services.router import route_mode
 
 router = APIRouter(prefix="/api", tags=["chat"])
+
+# Keep strong refs to fire-and-forget tasks so they aren't garbage-collected.
+_BG_TASKS: set[asyncio.Task] = set()
+
+
+def _spawn(coro) -> None:
+    task = asyncio.create_task(coro)
+    _BG_TASKS.add(task)
+    task.add_done_callback(_BG_TASKS.discard)
 
 
 class ChatTurn(BaseModel):
@@ -33,7 +44,7 @@ class ChatRequest(BaseModel):
     history: list[ChatTurn] = Field(default_factory=list)
     model: str | None = None
     research: bool = False
-    mode: str = Field(default="chat")  # chat | research | deep | agent
+    mode: str = Field(default="auto")  # auto | chat | research | deep | agent
     conversation_id: str | None = None
     use_kb: bool = False  # attach RAG context in chat mode
     compare_models: list[str] | None = None  # enables compare mode
@@ -47,8 +58,8 @@ def _normalize_mode(req: ChatRequest) -> str:
     if req.compare_models and len(req.compare_models) >= 2:
         return "compare"
     mode = (req.mode or "").strip().lower()
-    if mode not in {"chat", "research", "deep", "agent"}:
-        mode = "research" if req.research else "chat"
+    if mode not in {"auto", "chat", "research", "deep", "agent"}:
+        mode = "research" if req.research else "auto"
     return mode
 
 
@@ -99,6 +110,7 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
     user = getattr(request.state, "user", None)
     user_id = user["id"] if user else None
     set_user_id(user_id)
+    set_memory_block(db.memory_block(user_id) if user_id else None)
 
     if not settings.configured:
         yield _sse(
@@ -123,6 +135,11 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
 
     mode = _normalize_mode(req)
     client = create_client(settings, model=req.model or settings.default_model)
+
+    # Auto mode: let a tiny router pick chat | research | deep | agent
+    auto_reason: str | None = None
+    if mode == "auto":
+        mode, auto_reason = await route_mode(client, settings, message)
 
     # Persistence: create or reuse conversation (user-owned)
     if not user_id:
@@ -233,6 +250,9 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
             db.add_message(conv_id, "assistant", full_text, mode=mode, meta=meta)
             if conv_id:
                 db.touch_conversation(conv_id)
+            # Learn durable facts about the user in the background (best-effort)
+            if user_id and full_text:
+                _spawn(extract_memories(client, settings, user_id, message, full_text))
 
         except APIError as exc:
             await emit("error", {"message": f"Model provider error: {exc.message}"})
@@ -249,6 +269,7 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
             "mode": mode,
             "model": req.model or settings.default_model,
             "conversation_id": conv_id,
+            **({"auto_reason": auto_reason} if auto_reason else {}),
             **({"models": req.compare_models} if mode == "compare" else {}),
         },
     )

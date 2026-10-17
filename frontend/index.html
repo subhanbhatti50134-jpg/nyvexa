@@ -85,6 +85,14 @@
             </label>
           </div>
         </details>
+        <details class="kb" id="memory-details">
+          <summary class="kb__summary">Memory <span class="memory__count" id="memory-count"></span></summary>
+          <div class="kb__body">
+            <p class="memory__hint">Facts Nyvexa remembers to personalize answers. Click ✕ to forget one.</p>
+            <ul class="kb__files" id="memory-list"></ul>
+            <button class="btn btn--ghost btn--sm" id="memory-clear" type="button" hidden>Clear all memory</button>
+          </div>
+        </details>
         <div class="user-chip" id="user-chip" hidden>
           <span class="user-chip__email" id="user-email"></span>
         </div>
@@ -214,6 +222,7 @@
               <span class="composer__hint" id="status-hint">Shift + Enter for a new line</span>
               <label class="field field--mode">
                 <select class="field__select" id="mode-select" aria-label="Select mode">
+                  <option value="auto" selected>Auto</option>
                   <option value="chat">Chat</option>
                   <option value="research">Research</option>
                   <option value="deep">Deep Research</option>
