@@ -1,0 +1,27 @@
+services:
+  nyvexa:
+    build: .
+    ports:
+      - "8300:8000"
+    env_file:
+      - backend/.env
+    environment:
+      NYVEXA_DATA_DIR: /app/data
+    volumes:
+      - nyvexa-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  nyvexa-data:

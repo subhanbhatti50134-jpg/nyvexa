@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="50%" stop-color="#6d8cff"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e0f2fe" stop-opacity=".9"/>
+      <stop offset="100%" stop-color="#06061c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="b" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+  <rect width="200" height="200" rx="44" fill="#07071a"/>
+  <circle cx="100" cy="100" r="55" fill="url(#core)"/>
+  <circle cx="100" cy="100" r="66" fill="none" stroke="url(#g)" stroke-width="8" stroke-linecap="round" stroke-dasharray="320 95" filter="url(#b)"/>
+  <circle cx="100" cy="100" r="72" fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round" stroke-dasharray="180 280" opacity=".8"/>
+  <circle cx="55" cy="95" r="8" fill="#a5f3fc"/>
+  <circle cx="130" cy="80" r="7" fill="#67e8f9"/>
+  <circle cx="105" cy="145" r="6" fill="#e9d5ff"/>
+  <circle cx="140" cy="125" r="5" fill="#f0abfc"/>
+  <circle cx="136" cy="52" r="6" fill="#fff0fb"/>
+</svg>

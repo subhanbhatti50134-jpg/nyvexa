@@ -1,0 +1,13 @@
+# Lint config — run: .venv/bin/ruff check backend/
+line-length = 110
+target-version = "py312"
+exclude = [".venv", "data", "__pycache__"]
+
+[lint]
+select = ["E", "F", "W", "I", "C4", "B", "RUF"]
+ignore = [
+    "B008",  # FastAPI idiom: File()/Query() calls as defaults
+]
+
+[lint.per-file-ignores]
+"backend/tests/*" = ["RUF012"]  # mutable class attrs in test fakes are fine

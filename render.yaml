@@ -1,0 +1,22 @@
+# Render Blueprint — deploys Nyvexa as a free Python web service
+services:
+  - type: web
+    name: nyvexa
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NYVEXA_DEFAULT_MODEL
+        sync: false
+      - key: NYVEXA_FALLBACK_MODEL
+        sync: false

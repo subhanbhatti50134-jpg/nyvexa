@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Nyvexa — intelligent AI assistant with streaming chat and autonomous research." />
+  <meta name="theme-color" content="#07071a" />
+  <title>Nyvexa · Autonomous Intelligence</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/static/assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="/static/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/theme.css" />
+  <link rel="stylesheet" href="/static/css/layout.css" />
+  <link rel="stylesheet" href="/static/css/chat.css" />
+  <link rel="stylesheet" href="/static/css/sidebar.css" />
+</head>
+<body>
+  <!-- Auth overlay: email signup/login + Google -->
+  <div class="auth" id="auth-overlay" hidden>
+    <div class="auth__card">
+      <div class="auth__logo" aria-hidden="true">
+        <img src="/static/assets/favicon.svg" alt="" width="64" height="64" />
+      </div>
+      <h2 class="auth__title">Nyvexa</h2>
+      <p class="auth__sub" id="auth-sub">Sign in to continue</p>
+
+      <div class="auth__tabs" role="tablist">
+        <button type="button" class="auth__tab auth__tab--active" id="tab-login" role="tab">Log in</button>
+        <button type="button" class="auth__tab" id="tab-signup" role="tab">Sign up</button>
+      </div>
+
+      <button type="button" class="auth__google" id="google-btn">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <div class="auth__divider"><span>or</span></div>
+
+      <form class="auth__form" id="auth-form">
+        <input class="auth__input" type="email" id="auth-email" placeholder="Email" autocomplete="email" required />
+        <input class="auth__input" type="password" id="auth-password" placeholder="Password (min 8 characters)" autocomplete="current-password" required minlength="8" />
+        <input class="auth__input" type="text" id="auth-name" placeholder="Name (optional)" autocomplete="name" hidden />
+        <button class="btn btn--send auth__submit" type="submit" id="auth-submit">Log in</button>
+      </form>
+      <p class="auth__error" id="auth-error" hidden></p>
+      <p class="auth__hint">By continuing you agree to use Nyvexa responsibly.</p>
+    </div>
+  </div>
+
+  <div class="nyvexa" id="app">
+    <div class="nyvexa__aurora" aria-hidden="true">
+      <span class="nyvexa__glow nyvexa__glow--cyan"></span>
+      <span class="nyvexa__glow nyvexa__glow--violet"></span>
+      <span class="nyvexa__glow nyvexa__glow--pink"></span>
+    </div>
+
+    <!-- Sidebar: conversation history -->
+    <aside class="sidebar" id="sidebar" aria-label="Conversation history">
+      <div class="sidebar__head">
+        <button class="btn btn--new" id="new-chat-btn" type="button">New chat</button>
+      </div>
+      <p class="sidebar__label">Recent conversations</p>
+      <nav class="sidebar__list" id="conv-list"></nav>
+      <div class="sidebar__foot">
+        <details class="kb" open>
+          <summary class="kb__summary">Knowledge base</summary>
+          <div class="kb__body">
+            <label class="kb__upload" for="file-input">
+              <span>Upload PDF / TXT / MD</span>
+              <input type="file" id="file-input" accept=".txt,.md,.markdown,.pdf,.csv,.json,.py,.html" hidden />
+            </label>
+            <ul class="kb__files" id="kb-files"></ul>
+            <label class="toggle toggle--sm" title="Use uploaded docs in chat answers">
+              <input type="checkbox" id="kb-toggle" class="toggle__input" />
+              <span class="toggle__track" aria-hidden="true"><span class="toggle__thumb"></span></span>
+              <span class="toggle__label">Use KB</span>
+            </label>
+          </div>
+        </details>
+        <div class="user-chip" id="user-chip" hidden>
+          <span class="user-chip__email" id="user-email"></span>
+        </div>
+        <button class="btn btn--logout" id="logout-btn" type="button">Log out</button>
+      </div>
+    </aside>
+
+    <div class="main-col">
+      <header class="header">
+        <div class="header__brand">
+          <button class="icon-btn header__menu" id="sidebar-toggle" type="button" aria-label="Toggle sidebar">☰</button>
+          <div class="header__logo" id="logo" aria-hidden="true">
+            <svg class="orb" viewBox="0 0 200 200" role="img" aria-label="Nyvexa logo">
+              <defs>
+                <linearGradient id="orbRing" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#22d3ee" />
+                  <stop offset="45%" stop-color="#6d8cff" />
+                  <stop offset="100%" stop-color="#c084fc" />
+                </linearGradient>
+                <linearGradient id="orbRingAlt" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#f0abfc" />
+                  <stop offset="50%" stop-color="#a855f7" />
+                  <stop offset="100%" stop-color="#38bdf8" />
+                </linearGradient>
+                <radialGradient id="orbCore" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.9" />
+                  <stop offset="40%" stop-color="#a855f7" stop-opacity="0.25" />
+                  <stop offset="100%" stop-color="#06061c" stop-opacity="0" />
+                </radialGradient>
+                <filter id="orbGlow" x="-120%" y="-120%" width="340%" height="340%">
+                  <feGaussianBlur stdDeviation="3.5" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+                <filter id="orbFlare" x="-200%" y="-200%" width="500%" height="500%">
+                  <feGaussianBlur stdDeviation="4" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <circle cx="100" cy="100" r="62" fill="url(#orbCore)" />
+              <g class="orb__spin orb__spin--slow">
+                <circle cx="100" cy="100" r="68" fill="none" stroke="url(#orbRing)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="340 85" transform="rotate(-40 100 100)" filter="url(#orbGlow)" opacity="0.95" />
+                <circle cx="100" cy="100" r="73" fill="none" stroke="url(#orbRingAlt)" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="260 200" transform="rotate(120 100 100)" opacity="0.75" />
+              </g>
+              <g class="orb__spin orb__spin--reverse">
+                <circle cx="100" cy="100" r="64" fill="none" stroke="url(#orbRingAlt)" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="180 120" transform="rotate(25 100 100)" opacity="0.8" />
+                <circle cx="100" cy="100" r="78" fill="none" stroke="url(#orbRing)" stroke-width="1" stroke-linecap="round" stroke-dasharray="60 300" transform="rotate(-100 100 100)" opacity="0.55" />
+                <circle cx="100" cy="100" r="59" fill="none" stroke="#7dd3fc" stroke-width="0.9" stroke-dasharray="3 9" opacity="0.45" />
+              </g>
+              <g class="orb__constellation">
+                <path d="M62 88 L96 58 L128 96 L104 138 L70 118 Z" fill="none" stroke="#67e8f9" stroke-width="0.9" stroke-dasharray="3 5" opacity="0.5" />
+                <path d="M96 58 L118 72 M128 96 L148 88 M70 118 L58 140" fill="none" stroke="#c4b5fd" stroke-width="0.8" stroke-dasharray="2 6" opacity="0.4" />
+              </g>
+              <g filter="url(#orbGlow)">
+                <circle class="orb__node orb__node--pulse" cx="62" cy="88" r="6.5" fill="#a5f3fc" />
+                <circle cx="96" cy="58" r="3.2" fill="#f5d0fe" />
+                <circle class="orb__node" cx="128" cy="96" r="5" fill="#67e8f9" />
+                <circle cx="104" cy="138" r="3.6" fill="#e9d5ff" />
+                <circle cx="70" cy="118" r="2.8" fill="#a5f3fc" />
+                <circle class="orb__node orb__node--pulse orb__node--delay" cx="118" cy="72" r="2.6" fill="#fff" />
+                <circle cx="52" cy="132" r="3" fill="#f0abfc" />
+                <circle cx="150" cy="112" r="4.4" fill="#67e8f9" />
+                <circle cx="84" cy="152" r="3.4" fill="#f5d0fe" />
+                <circle cx="44" cy="104" r="4.8" fill="#e0f2fe" />
+              </g>
+              <g class="orb__flare" filter="url(#orbFlare)">
+                <circle cx="136" cy="52" r="4.5" fill="#fff0fb" />
+                <circle cx="136" cy="52" r="9" fill="#f0abfc" opacity="0.35" />
+                <path d="M136 38 L138 50 L150 52 L138 54 L136 66 L134 54 L122 52 L134 50 Z" fill="#fdf4ff" opacity="0.9" />
+              </g>
+            </svg>
+          </div>
+          <div class="header__text">
+            <h1 class="header__name">Nyvexa</h1>
+            <p class="header__tagline">Autonomous Intelligence</p>
+          </div>
+        </div>
+
+        <div class="header__controls">
+          <label class="field" id="compare-field" hidden>
+            <span class="field__label">vs</span>
+            <select class="field__select" id="model-select-b" aria-label="Compare model B"></select>
+          </label>
+          <label class="field">
+            <span class="field__label">Model</span>
+            <select class="field__select" id="model-select" aria-label="Select model"></select>
+          </label>
+          <div class="header__tools">
+            <button class="btn btn--ghost btn--sm" id="export-btn" type="button" title="Export chat as Markdown">Export</button>
+            <button class="btn btn--ghost btn--sm" id="clear-btn" type="button" title="Clear conversation">Clear</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="chat" id="chat" aria-live="polite">
+        <div class="chat__stream" id="chat-stream">
+          <section class="welcome" id="welcome">
+            <div class="welcome__orb" aria-hidden="true">
+              <span class="welcome__ring"></span>
+              <span class="welcome__ring welcome__ring--2"></span>
+            </div>
+            <h2 class="welcome__title">Hello, I'm Nyvexa</h2>
+            <p class="welcome__subtitle">
+              Streaming answers, deep research, tool-using agents, and your own knowledge base.
+            </p>
+            <div class="welcome__chips" id="suggestions">
+              <button class="chip" type="button" data-mode="agent">Run a Python script that visualizes prime numbers</button>
+              <button class="chip" type="button" data-mode="deep">Deep research: small language models in 2026</button>
+              <button class="chip" type="button" data-mode="research">Research FastAPI SSE streaming patterns</button>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="composer">
+          <div class="composer__row">
+            <textarea
+              class="composer__input"
+              id="composer-input"
+              rows="1"
+              placeholder="Ask Nyvexa anything…"
+              aria-label="Message Nyvexa"
+            ></textarea>
+          </div>
+          <div class="composer__bar">
+            <div class="composer__tools">
+              <span class="composer__hint" id="status-hint">Shift + Enter for a new line</span>
+              <label class="field field--mode">
+                <select class="field__select" id="mode-select" aria-label="Select mode">
+                  <option value="chat">Chat</option>
+                  <option value="research">Research</option>
+                  <option value="deep">Deep Research</option>
+                  <option value="agent">Agent</option>
+                  <option value="compare">Compare</option>
+                </select>
+              </label>
+              <button class="icon-btn" id="voice-btn" type="button" title="Voice input" aria-label="Voice input">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+              </button>
+              <button class="icon-btn" id="speak-btn" type="button" title="Read last reply aloud" aria-label="Read aloud">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+              </button>
+              <span class="usage-meter" id="usage-meter" hidden></span>
+              <button class="btn btn--stop btn--sm" id="stop-btn" type="button" hidden>Stop</button>
+            </div>
+            <button class="btn btn--send" id="send-btn" type="submit" aria-label="Send message">
+              <span class="btn__label">Send</span>
+            </button>
+          </div>
+        </form>
+        <p class="composer__note">Nyvexa can make mistakes. Verify important information.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
