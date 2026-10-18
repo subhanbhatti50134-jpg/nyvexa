@@ -50,10 +50,11 @@ def redirect_uri_for(request: Request) -> str:
 
 
 def extract_token(request: Request) -> str:
+    """Bearer header only — query-string tokens leak via URLs/logs/referers."""
     auth = request.headers.get("Authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    return request.query_params.get("token", "")
+    return ""
 
 
 def get_request_user(request: Request) -> dict | None:

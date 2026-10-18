@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import secrets
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -23,9 +24,11 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD = 8
+OAUTH_STATE_COOKIE = "nyvexa_oauth_state"
+OAUTH_STATE_TTL = 600
 
 _BODY_STYLE = (
-    "background:#07071a;color:#e7e9f8;font-family:sans-serif;"
+    "background:#f7f6f2;color:#102747;font-family:sans-serif;"
     "display:grid;place-items:center;height:100vh;margin:0"
 )
 
@@ -80,6 +83,12 @@ async def login(body: LoginBody) -> dict[str, Any]:
         raise HTTPException(401, "Invalid email or password")
     if not db.verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
+    # transparent cost upgrade: old hashes are re-saved with current iterations
+    if db.password_needs_rehash(user["password_hash"]):
+        try:
+            db.set_password(user["email"], body.password)
+        except Exception:
+            pass  # never fail a valid login over a rehash
     token = issue_session(user["id"])
     return {"token": token, "user": _public_user(user)}
 
@@ -111,21 +120,50 @@ async def google_start(request: Request) -> RedirectResponse:
             400,
             "Google login is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in backend/.env",
         )
-    return RedirectResponse(google_auth_url("nyvexa", redirect_uri_for(request)))
+    # Random per-attempt state bound to this browser (CSRF protection)
+    state = secrets.token_urlsafe(24)
+    response = RedirectResponse(google_auth_url(state, redirect_uri_for(request)))
+    response.set_cookie(
+        OAUTH_STATE_COOKIE,
+        state,
+        max_age=OAUTH_STATE_TTL,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+    return response
 
 
 @router.get("/google/callback")
 async def google_callback(
-    request: Request, code: str | None = None, error: str | None = None
+    request: Request,
+    code: str | None = None,
+    error: str | None = None,
+    state: str | None = None,
 ) -> HTMLResponse:
     # Always return to the exact origin the browser used (localhost vs ngrok
     # tunnel vs LAN IP) — the session token is written to localStorage on THAT origin.
     origin = str(request.base_url).rstrip("/")
 
+    expected = request.cookies.get(OAUTH_STATE_COOKIE, "")
+
+    def done(resp: HTMLResponse) -> HTMLResponse:
+        resp.delete_cookie(OAUTH_STATE_COOKIE, samesite="lax")
+        return resp
+
     if error or not code:
         msg = "Google sign-in was cancelled or failed."
         _log_google("denied", None, msg)
-        return _redirect_html(origin, ok=False, message=msg)
+        return done(_redirect_html(origin, ok=False, message=msg))
+
+    # Validate the state echo (CSRF); never trust the code without it
+    if not expected or not state or not secrets.compare_digest(expected, state):
+        _log_google("state_mismatch", None, "oauth state missing or mismatched")
+        return done(
+            _redirect_html(
+                origin, ok=False, message="Google sign-in could not be verified — please try again."
+            )
+        )
 
     try:
         profile = await google_exchange_code(code, redirect_uri_for(request))
@@ -133,13 +171,19 @@ async def google_callback(
         token = issue_session(user["id"])
     except Exception as exc:
         _log_google("error", None, str(exc))
-        return _redirect_html(origin, ok=False, message=f"Google sign-in failed: {exc}")
+        # raw exception stays in server logs only — generic message to the browser
+        return done(
+            _redirect_html(
+                origin, ok=False, message="Google sign-in failed — please try again."
+            )
+        )
 
     _log_google("ok", user.get("email", ""), f"google_sub={profile.get('sub', '')}")
     # Token delivered via a short-lived bridge page (never appears in server logs
     # or the final URL); redirect stays on the caller's origin.
-    return HTMLResponse(
-        f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Nyvexa</title>
+    return done(
+        HTMLResponse(
+            f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Nyvexa</title>
         <script>
           try {{
             localStorage.setItem("nyvexa_token", {token!r});
@@ -150,7 +194,8 @@ async def google_callback(
           window.location.replace({origin!r});
         </script></head><body style="{_BODY_STYLE}">
         <p>Signing you in…</p></body></html>""",
-        status_code=200,
+            status_code=200,
+        )
     )
 
 

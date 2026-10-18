@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import re
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -23,6 +25,11 @@ from backend.services.research import run_chat_only, stream_research
 from backend.services.router import route_mode
 
 router = APIRouter(prefix="/api", tags=["chat"])
+logger = logging.getLogger("nyvexa.chat")
+
+# Strict shape for model ids / conversation ids before they reach providers or SQL
+MODEL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,119}$")
+CONV_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 # Keep strong refs to fire-and-forget tasks so they aren't garbage-collected.
 _BG_TASKS: set[asyncio.Task] = set()
@@ -35,19 +42,24 @@ def _spawn(coro) -> None:
 
 
 class ChatTurn(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., max_length=20)
+    content: str = Field(..., max_length=8000)
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1)
-    history: list[ChatTurn] = Field(default_factory=list)
-    model: str | None = None
+    # Hard request-size caps (message is further trimmed to settings.max_message_chars)
+    message: str = Field(..., min_length=1, max_length=16000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=100)
+    model: str | None = Field(default=None, max_length=120)
     research: bool = False
-    mode: str = Field(default="auto")  # auto | chat | research | deep | agent
-    conversation_id: str | None = None
+    mode: str = Field(default="auto", max_length=16)  # auto | chat | research | deep | agent
+    conversation_id: str | None = Field(default=None, max_length=64)
     use_kb: bool = False  # attach RAG context in chat mode
-    compare_models: list[str] | None = None  # enables compare mode
+    compare_models: list[str] | None = Field(default=None, max_length=2)
+
+
+def _valid_model(model_id: str | None) -> bool:
+    return model_id is None or bool(MODEL_ID_RE.match(model_id))
 
 
 def _sse(event: str, data: dict[str, Any]) -> str:
@@ -116,8 +128,9 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
         yield _sse(
             "error",
             {
-                "message": "OPENROUTER_API_KEY is not set. Copy backend/.env.example to "
-                "backend/.env and add your key from https://openrouter.ai/keys"
+                "message": "No model provider is configured. Copy backend/.env.example to "
+                "backend/.env and set NVIDIA_API_KEY or OPENROUTER_API_KEY "
+                "(https://openrouter.ai/keys)"
             },
         )
         return
@@ -134,6 +147,12 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
     ][-settings.max_history :]
 
     mode = _normalize_mode(req)
+    if not _valid_model(req.model):
+        yield _sse("error", {"message": "Invalid model id."})
+        return
+    if req.compare_models and not all(_valid_model(m) for m in req.compare_models):
+        yield _sse("error", {"message": "Invalid model id in compare selection."})
+        return
     client = create_client(settings, model=req.model or settings.default_model)
 
     # Auto mode: let a tiny router pick chat | research | deep | agent
@@ -147,6 +166,8 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
         return
 
     conv_id = req.conversation_id
+    if conv_id and not CONV_ID_RE.match(conv_id):
+        conv_id = None  # malformed client-supplied id — start a fresh conversation
     if conv_id:
         conv = db.get_conversation(conv_id, user_id=user_id)
         if not conv:
@@ -255,9 +276,18 @@ async def _event_stream(req: ChatRequest, request: Request) -> AsyncIterator[str
                 _spawn(extract_memories(client, settings, user_id, message, full_text))
 
         except APIError as exc:
-            await emit("error", {"message": f"Model provider error: {exc.message}"})
-        except Exception as exc:
-            await emit("error", {"message": f"Unexpected server error: {exc}"})
+            # Full provider detail goes to server logs only; client gets a bounded,
+            # control-char-free message (provider text can be long/noisy but never
+            # contains our credentials).
+            logger.warning("provider APIError: %s", exc)
+            detail = re.sub(r"[\r\n]+", " ", str(getattr(exc, "message", "") or exc))[:300]
+            await emit(
+                "error",
+                {"message": f"Model provider error: {detail}" if detail else "Model provider error."},
+            )
+        except Exception:
+            logger.exception("chat stream failed")
+            await emit("error", {"message": "Something went wrong on our side — please try again."})
         finally:
             await queue.put(None)
 

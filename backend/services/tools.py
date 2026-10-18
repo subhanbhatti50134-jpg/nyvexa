@@ -128,12 +128,76 @@ _FORBIDDEN = (
     "import shutil", "__import__", "open(", "exec(", "eval(", "breakpoint(",
 )
 
+# AST-level controls: substring deny-lists are trivially bypassed
+# ("import  os", "from os import ...", "importlib.import_module('os')"),
+# so imports must come from an allowlist and dangerous names/attrs are banned.
+_ALLOWED_MODULES = frozenset({
+    "math", "cmath", "random", "statistics", "itertools", "functools",
+    "collections", "re", "json", "string", "datetime", "time", "calendar",
+    "heapq", "bisect", "decimal", "fractions", "operator", "copy",
+    "textwrap", "enum", "typing", "dataclasses", "array", "struct",
+    "unicodedata", "difflib", "pprint", "uuid", "hashlib", "hmac", "base64",
+    "zlib", "csv",
+})
+_BANNED_CALLS = frozenset({
+    "exec", "eval", "compile", "__import__", "open", "breakpoint", "input",
+    "globals", "locals", "vars", "getattr", "setattr", "delattr",
+    "memoryview", "exit", "quit",
+})
+
+
+def _ast_reject(tree: ast.AST) -> str | None:
+    """Return a reason string when the AST uses anything outside the sandbox."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split(".")[0]
+                if root not in _ALLOWED_MODULES:
+                    return f"import not allowed: {alias.name}"
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                return "relative imports are not allowed"
+            root = (node.module or "").split(".")[0]
+            if root not in _ALLOWED_MODULES:
+                return f"import not allowed: {node.module}"
+        elif isinstance(node, ast.Name):
+            if node.id in _BANNED_CALLS:
+                return f"blocked name: {node.id}"
+            if node.id.startswith("__") and node.id.endswith("__"):
+                return f"blocked name: {node.id}"
+        elif isinstance(node, ast.Attribute):
+            attr = node.attr
+            if attr == "open":
+                return "blocked attribute: open"
+            if attr.startswith("__") and attr.endswith("__"):
+                return f"blocked attribute: {attr}"
+    return None
+
+
+def _sandbox_limits() -> None:
+    """Run inside tight OS limits (best-effort; Linux only)."""
+    try:
+        import resource
+
+        resource.setrlimit(resource.RLIMIT_CPU, (6, 6))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (1_000_000, 1_000_000))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+    except Exception:
+        pass
+
 
 def run_python(code: str) -> str:
     lowered = code.lower()
     for bad in _FORBIDDEN:
         if bad in lowered:
             return json.dumps({"error": f"Blocked pattern: {bad}"})
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as exc:
+        return json.dumps({"error": f"SyntaxError: {exc.msg} (line {exc.lineno})"})
+    reason = _ast_reject(tree)
+    if reason:
+        return json.dumps({"error": f"Blocked: {reason}"})
     with tempfile.TemporaryDirectory() as tmp:
         script = Path(tmp) / "snippet.py"
         script.write_text(code, encoding="utf-8")
@@ -145,6 +209,7 @@ def run_python(code: str) -> str:
                 timeout=PY_TIMEOUT,
                 cwd=tmp,
                 env={"PATH": "/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE": "1"},
+                preexec_fn=_sandbox_limits,
             )
         except subprocess.TimeoutExpired:
             return json.dumps({"error": "Timeout after 8s"})

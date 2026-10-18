@@ -11,7 +11,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-PROTECTED_PREFIXES = ("/api/chat",)
+PROTECTED_PREFIXES = ("/api/chat", "/api/files")
+AUTH_PATHS = ("/api/auth/login", "/api/auth/signup")
 
 
 class RateLimiter:
@@ -65,15 +66,33 @@ class RateLimiter:
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, limiter: RateLimiter) -> None:
+    """Sliding-window limits.
+
+    - Auth endpoints (login/signup): strict per-IP cap against credential stuffing.
+    - Expensive endpoints (chat/files): per-ACCOUNT cap when authenticated
+      (falls back to per-IP for anonymous traffic). AuthMiddleware runs first
+      (outermost), so request.state.user_id is already populated here.
+    """
+
+    def __init__(self, app, limiter: RateLimiter, auth_limiter: RateLimiter | None = None) -> None:
         super().__init__(app)
         self.limiter = limiter
+        self.auth_limiter = auth_limiter
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        if any(path.startswith(p) for p in PROTECTED_PREFIXES):
-            client = request.client.host if request.client else "unknown"
-            if not self.limiter.allow(client):
+        client = request.client.host if request.client else "unknown"
+
+        if self.auth_limiter is not None and path in AUTH_PATHS:
+            if not self.auth_limiter.allow(f"ip:{client}"):
+                return JSONResponse(
+                    status_code=429,
+                    content={"error": "Too many attempts — please wait a minute and try again."},
+                )
+        elif any(path.startswith(p) for p in PROTECTED_PREFIXES):
+            user_id = getattr(request.state, "user_id", None)
+            key = f"user:{user_id}" if user_id else f"ip:{client}"
+            if not self.limiter.allow(key):
                 return JSONResponse(
                     status_code=429,
                     content={"error": "Rate limit exceeded. Please wait a moment and try again."},

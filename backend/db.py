@@ -19,7 +19,11 @@ DATA_DIR = Path(os.getenv("NYVEXA_DATA_DIR", Path(__file__).resolve().parent.par
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "nyvexa.db"
 
-_PBKDF2_ITERATIONS = 200_000
+# OWASP 2023 PBKDF2-SHA256 recommendation: 600,000 iterations.
+# Stored hashes embed their iteration count, so this can be raised freely —
+# existing hashes verify and are transparently upgraded on next login
+# (see password_needs_rehash / routers.auth.login).
+_PBKDF2_ITERATIONS = 600_000
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -229,6 +233,20 @@ def verify_password(password: str, stored: str) -> bool:
         return hmac.compare_digest(dk, expected)
     except Exception:
         return False
+
+
+def password_needs_rehash(stored: str) -> bool:
+    """True when a verified hash was produced with fewer iterations (or unknown format)."""
+    try:
+        algo, iters, _salt_hex, _hash_hex = stored.split("$")
+    except Exception:
+        return True
+    if algo != "pbkdf2":
+        return True
+    try:
+        return int(iters) < _PBKDF2_ITERATIONS
+    except ValueError:
+        return True
 
 
 # ---------- users ----------

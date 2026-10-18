@@ -21,7 +21,8 @@ services:
     image: redis:7-alpine
     profiles: ["redis"]
     ports:
-      - "6379:6379"
+      # loopback only — never expose Redis beyond the host
+      - "127.0.0.1:6379:6379"
     restart: unless-stopped
 
 volumes:

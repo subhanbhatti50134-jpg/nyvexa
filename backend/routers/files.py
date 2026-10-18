@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api/files", tags=["rag"])
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 ALLOWED_EXT = {".txt", ".md", ".markdown", ".pdf", ".csv", ".json", ".py", ".html"}
+TEXT_EXT = {".txt", ".md", ".markdown", ".csv", ".json", ".py", ".html"}
 
 
 def _uid(request: Request) -> str:
@@ -21,6 +22,21 @@ def _uid(request: Request) -> str:
     if not user:
         raise HTTPException(401, "Unauthorized")
     return user["id"]
+
+
+def _validate_content(ext: str, data: bytes) -> None:
+    """Extension alone is not a type check — verify the actual bytes."""
+    if ext == ".pdf":
+        if not data.lstrip()[:5].startswith(b"%PDF-"):
+            raise HTTPException(400, "File content is not a valid PDF")
+        return
+    if ext in TEXT_EXT:
+        if b"\x00" in data:
+            raise HTTPException(400, "Binary content is not allowed in text files")
+        try:
+            data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(400, "File must be valid UTF-8 text") from None
 
 
 @router.get("")
@@ -41,11 +57,13 @@ async def upload(file: UploadFile = File(...), request: Request = None) -> dict[
         raise HTTPException(400, "File too large (max 5 MB)")
     if not data:
         raise HTTPException(400, "Empty file")
+    _validate_content(ext, data)
 
     try:
         result = ingest_bytes(name, data, user_id)
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        # parser messages are usually safe; bound them anyway and never echo tracebacks
+        raise HTTPException(400, str(exc)[:300]) from exc
     if result["chunks"] == 0:
         raise HTTPException(400, "No readable text found in file")
     return result

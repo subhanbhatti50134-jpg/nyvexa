@@ -87,6 +87,7 @@ class Settings:
     max_history: int = int(os.getenv("NYVEXA_MAX_HISTORY", "24"))
     max_message_chars: int = int(os.getenv("NYVEXA_MAX_MESSAGE_CHARS", "8000"))
     rate_limit_per_minute: int = int(os.getenv("NYVEXA_RATE_LIMIT", "20"))
+    auth_rate_limit_per_minute: int = int(os.getenv("NYVEXA_AUTH_RATE_LIMIT", "10"))
     research_max_queries: int = int(os.getenv("NYVEXA_RESEARCH_MAX_QUERIES", "3"))
     research_results_per_query: int = int(os.getenv("NYVEXA_RESEARCH_RESULTS", "3"))
     cors_origins: list[str] = field(
