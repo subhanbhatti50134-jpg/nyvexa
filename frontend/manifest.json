@@ -1,11 +1,11 @@
 {
-  "name": "Nyvexa — Autonomous Intelligence",
+  "name": "Nyvexa — AI Workspace",
   "short_name": "Nyvexa",
   "description": "Intelligent AI assistant with streaming chat and autonomous research.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#04040f",
-  "theme_color": "#07071a",
+  "background_color": "#F7F6F2",
+  "theme_color": "#F7F6F2",
   "icons": [
     {
       "src": "/static/assets/icon-192.png",

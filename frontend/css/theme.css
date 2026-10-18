@@ -1,37 +1,40 @@
-/* Nyvexa theme — cosmic orb palette (BEM tokens) */
+/* Nyvexa design system — premium SaaS workspace (light, warm ivory) */
 
 :root {
-  --nv-bg-deep: #04040f;
-  --nv-bg: #07071a;
-  --nv-bg-panel: rgba(14, 14, 38, 0.72);
-  --nv-bg-panel-solid: #0d0d28;
-  --nv-bg-elevated: rgba(22, 22, 56, 0.85);
-  --nv-border: rgba(120, 110, 220, 0.18);
-  --nv-border-strong: rgba(140, 130, 255, 0.32);
+  /* palette */
+  --nv-bg-deep: #f7f6f2; /* warm ivory page background */
+  --nv-bg: #f7f6f2;
+  --nv-bg-panel: #ffffff;
+  --nv-bg-panel-solid: #ffffff;
+  --nv-bg-elevated: #ffffff;
+  --nv-bg-side: #e9eef5; /* pale blue-gray sidebar */
+  --nv-border: rgba(16, 39, 71, 0.1);
+  --nv-border-strong: rgba(16, 39, 71, 0.2);
 
-  --nv-cyan: #22d3ee;
-  --nv-sky: #7dd3fc;
-  --nv-blue: #6d8cff;
-  --nv-violet: #a855f7;
-  --nv-purple: #8b5cf6;
-  --nv-pink: #f0abfc;
-  --nv-magenta: #e879f9;
-  --nv-white: #f8fafc;
+  /* accents (kept under legacy names; all remapped to classic blue) */
+  --nv-cyan: #1769c2; /* primary actions / links / focus */
+  --nv-sky: #0f4c81;
+  --nv-blue: #1769c2;
+  --nv-violet: #1769c2;
+  --nv-purple: #1769c2;
+  --nv-pink: #0f4c81; /* secondary accent (deep blue) */
+  --nv-magenta: #1769c2;
+  --nv-white: #ffffff; /* text on accent surfaces */
 
-  --nv-text: #e7e9f8;
-  --nv-text-dim: #9aa0c3;
-  --nv-text-faint: #6b719a;
+  --nv-text: #102747; /* deep navy primary text */
+  --nv-text-dim: #66758c; /* slate secondary text */
+  --nv-text-faint: #6b7a91; /* slate tertiary (AA on ivory) */
 
-  --nv-font: "Inter", system-ui, -apple-system, sans-serif;
-  --nv-mono: "JetBrains Mono", ui-monospace, monospace;
+  --nv-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --nv-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   --nv-radius-sm: 8px;
-  --nv-radius: 14px;
-  --nv-radius-lg: 20px;
-  --nv-shadow-glow: 0 0 24px rgba(168, 85, 247, 0.25), 0 0 48px rgba(34, 211, 238, 0.08);
-  --nv-shadow-panel: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --nv-radius: 10px;
+  --nv-radius-lg: 12px;
+  --nv-shadow-glow: 0 1px 2px rgba(16, 39, 71, 0.06), 0 8px 24px rgba(16, 39, 71, 0.1);
+  --nv-shadow-panel: 0 1px 2px rgba(16, 39, 71, 0.05), 0 10px 30px rgba(16, 39, 71, 0.08);
 
-  --nv-header-h: 68px;
+  --nv-header-h: 64px;
   --nv-composer-max: 780px;
   --nv-chat-max: 820px;
 }
@@ -51,15 +54,15 @@ body {
 
 body {
   font-family: var(--nv-font);
-  background: var(--nv-bg-deep);
+  background: var(--nv-bg);
   color: var(--nv-text);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
 ::selection {
-  background: rgba(168, 85, 247, 0.35);
-  color: var(--nv-white);
+  background: rgba(23, 105, 194, 0.18);
+  color: var(--nv-text);
 }
 
 ::-webkit-scrollbar {
@@ -70,13 +73,13 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(130, 120, 220, 0.25);
+  background: rgba(16, 39, 71, 0.18);
   border-radius: 99px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 140, 240, 0.45);
+  background: rgba(16, 39, 71, 0.32);
   background-clip: content-box;
 }
 
@@ -101,21 +104,41 @@ pre {
   font-family: var(--nv-mono);
 }
 
+/* visible, consistent keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--nv-cyan);
+  outline-offset: 2px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
 @keyframes nv-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.82); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
 }
 
 @keyframes nv-fade-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes nv-spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes nv-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.85; }
-  50% { transform: scale(1.035); opacity: 1; }
+  to {
+    transform: rotate(360deg);
+  }
 }

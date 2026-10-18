@@ -6,7 +6,7 @@
  */
 
 import { SSEClient } from "./streaming.js";
-import { renderMarkdown } from "./markdown.js";
+import { renderMarkdown, safeUrl } from "./markdown.js";
 import { $, el, scrollChatToBottom, typingDots, timeLabel, domainOf, setBusy, toast } from "./ui.js";
 import { api } from "./api.js";
 import { HistoryPanel } from "./history.js";
@@ -283,10 +283,7 @@ export class ChatApp {
     const section = el("section", "welcome");
     section.id = "welcome";
     section.innerHTML = `
-      <div class="welcome__orb" aria-hidden="true">
-        <span class="welcome__ring"></span>
-        <span class="welcome__ring welcome__ring--2"></span>
-      </div>
+      <div class="welcome__logo" aria-hidden="true">N</div>
       <h2 class="welcome__title">Hello, I'm Nyvexa</h2>
       <p class="welcome__subtitle">Streaming answers, deep research, tool-using agents, and your own knowledge base.</p>
       <div class="welcome__chips" id="suggestions">
@@ -569,6 +566,12 @@ export class ChatApp {
           this.lastAssistantText = text;
           this.history.push({ role: "assistant", content: text });
           if (this.history.length > 40) this.history = this.history.slice(-40);
+          // optional auto-read (settings menu)
+          try {
+            if (localStorage.getItem("nyvexa_autoread") === "1" && text) this.reader.speak(text);
+          } catch {
+            /* private mode */
+          }
           // actions row
           if (!a.root.querySelector(".msg-actions")) {
             const actions = el("div", "msg-actions");
@@ -635,7 +638,7 @@ export class ChatApp {
       li.innerHTML = `
         <span class="source__index">[${s.index}]</span>
         <span>
-          <a class="source__link" href="${encodeURI(s.url)}" target="_blank" rel="noopener noreferrer"></a>
+          <a class="source__link" href="${safeUrl(encodeURI(s.url))}" target="_blank" rel="noopener noreferrer"></a>
           <span class="source__domain"></span>
         </span>`;
       li.querySelector(".source__link").textContent = s.title || domain;

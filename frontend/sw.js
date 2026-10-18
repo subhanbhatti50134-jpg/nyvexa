@@ -1,6 +1,6 @@
 /* Nyvexa service worker — app shell cache, network-first for API. */
 
-const CACHE = "nyvexa-v2";
+const CACHE = "nyvexa-v3";
 const SHELL = [
   "/",
   "/static/css/theme.css",
@@ -36,6 +36,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+  // Only manage our own assets — intercepting cross-origin font/CDN requests
+  // re-fetches them without the page's CORS context and breaks font loading.
+  if (url.origin !== self.location.origin) return;
   // Never cache API/SSE
   if (url.pathname.startsWith("/api/")) return;
 

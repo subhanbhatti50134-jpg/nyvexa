@@ -10,7 +10,7 @@ export function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 }
 
-function safeUrl(url) {
+export function safeUrl(url) {
   try {
     const parsed = new URL(url, window.location.origin);
     if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.href;

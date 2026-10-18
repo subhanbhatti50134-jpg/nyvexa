@@ -108,6 +108,17 @@ async function showAuth({ googleEnabled = true } = {}) {
   document.getElementById("auth-password")?.focus();
 }
 
+async function doLogout() {
+  try {
+    await api("/api/auth/logout", { method: "POST" });
+  } catch {
+    /* ignore */
+  }
+  setToken("");
+  localStorage.removeItem("nyvexa_user");
+  location.reload();
+}
+
 function renderUserChip(user) {
   const chip = document.getElementById("user-chip");
   if (!chip) return;
@@ -124,26 +135,100 @@ function renderUserChip(user) {
     emailEl.textContent = email;
     emailEl.title = email;
   }
+  const profileEmail = document.getElementById("profile-email");
+  if (profileEmail) {
+    profileEmail.textContent = email;
+    profileEmail.title = email;
+  }
   const logoutBtn = document.getElementById("logout-btn");
   if (logoutBtn && !logoutBtn._bound) {
     logoutBtn._bound = true;
-    logoutBtn.addEventListener("click", async () => {
+    logoutBtn.addEventListener("click", doLogout);
+  }
+  const profileLogout = document.getElementById("profile-logout");
+  if (profileLogout && !profileLogout._bound) {
+    profileLogout._bound = true;
+    profileLogout.addEventListener("click", doLogout);
+  }
+}
+
+function wireHeaderMenus() {
+  const settingsBtn = document.getElementById("settings-btn");
+  const settingsMenu = document.getElementById("settings-menu");
+  const profileBtn = document.getElementById("profile-btn");
+  const profileMenu = document.getElementById("profile-menu");
+
+  const closeAll = () => {
+    for (const [btn, menu] of [
+      [settingsBtn, settingsMenu],
+      [profileBtn, profileMenu],
+    ]) {
+      if (!menu || !btn) continue;
+      menu.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+    }
+  };
+  const openOne = (btn, menu) => {
+    const willOpen = menu.hidden;
+    closeAll();
+    if (willOpen) {
+      menu.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+    }
+  };
+
+  settingsBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openOne(settingsBtn, settingsMenu);
+  });
+  profileBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openOne(profileBtn, profileMenu);
+  });
+
+  // choosing an action closes the menu (checkbox toggles keep it open)
+  for (const menu of [settingsMenu, profileMenu]) {
+    menu?.addEventListener("click", (e) => {
+      const item = e.target.closest(".menu-pop__item");
+      if (!item || item.tagName === "LABEL" || item.querySelector("input")) return;
+      closeAll();
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".menu-wrap")) return;
+    closeAll();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAll();
+  });
+
+  // Auto-read replies preference
+  const autoread = document.getElementById("autoread-toggle");
+  if (autoread) {
+    try {
+      autoread.checked = localStorage.getItem("nyvexa_autoread") === "1";
+    } catch {
+      /* private mode */
+    }
+    autoread.addEventListener("change", () => {
       try {
-        await api("/api/auth/logout", { method: "POST" });
+        localStorage.setItem("nyvexa_autoread", autoread.checked ? "1" : "0");
       } catch {
-        /* ignore */
+        /* private mode */
       }
-      setToken("");
-      localStorage.removeItem("nyvexa_user");
-      location.reload();
     });
   }
 }
 
 let appInstance = null;
+let menusWired = false;
 
 function bootApp(user) {
   renderUserChip(user);
+  if (!menusWired) {
+    menusWired = true;
+    wireHeaderMenus();
+  }
   if (appInstance) return;
   appInstance = new ChatApp();
   window.nyvexa = appInstance;
