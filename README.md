@@ -78,6 +78,24 @@ The redirect URI is derived from the request origin automatically — for produc
 docker compose up -d --build     # app on :8300, data in the nyvexa-data volume
 ```
 
+## Deploy (Hugging Face Spaces)
+
+The app runs as a FastAPI script inside a **ZeroGPU** Space (free tier; no GPU
+quota used — all inference is remote via NVIDIA NIM / OpenRouter):
+
+```bash
+export HF_TOKEN=hf_…                    # HF token with write access
+.venv/bin/python scripts/deploy_hf.py   # uploads code, env, README; waits for RUNNING
+```
+
+- The Space's users/conversations DB persists in the private dataset
+  `subhan134/nyvexa-data` — pulled at boot, pushed every 10 minutes and on
+  shutdown (`backend/services/hf_sync.py`).
+- A keepalive thread pings the Space's own `/api/health` every 15 minutes so
+  it never sleeps (`backend/services/keepalive.py`).
+- `app.py` is the Space entrypoint (ZeroGPU startup-report handshake); local
+  development still runs `backend.main:app` directly.
+
 ## Development
 
 ```bash
@@ -116,3 +134,13 @@ curl -N -X POST localhost:8300/api/chat \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"message":"hello","mode":"chat"}'
 ```
+
+## Community
+
+- [Code of Conduct](CODE_OF_CONDUCT.md) — how we expect everyone to behave
+- [Contributing](CONTRIBUTING.md) — setup, checks, and PR conventions
+- [Security Policy](SECURITY.md) — how to report vulnerabilities privately
+
+## License
+
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Muhammad Subhan.
