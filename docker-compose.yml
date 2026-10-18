@@ -7,6 +7,7 @@ services:
       - backend/.env
     environment:
       NYVEXA_DATA_DIR: /app/data
+      PORT: 8000
     volumes:
       - nyvexa-data:/app/data
     restart: unless-stopped

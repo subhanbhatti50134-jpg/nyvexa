@@ -1,0 +1,20 @@
+# never bake secrets or local state into the image
+.git
+.gitignore
+.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.ruff_cache
+.pytest_cache
+backend/.env
+backend/.env.*
+backend/tests
+data
+info
+*.db
+*.db-journal
+render.yaml
+docker-compose.yml
+README.md
+.github
