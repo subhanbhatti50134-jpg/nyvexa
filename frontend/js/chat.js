@@ -209,6 +209,9 @@ export class ChatApp {
     $("#sidebar-toggle")?.addEventListener("click", () => {
       document.querySelector(".nyvexa")?.classList.toggle("sidebar-open");
     });
+    $("#sidebar-scrim")?.addEventListener("click", () => {
+      document.querySelector(".nyvexa")?.classList.remove("sidebar-open");
+    });
 
     this.modeSelect?.addEventListener("change", () => {
       const isCompare = this.modeSelect.value === "compare";

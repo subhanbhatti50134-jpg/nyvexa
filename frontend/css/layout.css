@@ -525,10 +525,25 @@ body:not(:has(#welcome)) .header__tools {
   white-space: nowrap;
 }
 
+/* mobile drawer scrim (shown only while the sidebar is open, <900px) */
+.sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(4, 4, 15, 0.6);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
 /* responsive */
 @media (max-width: 900px) {
   .nyvexa { grid-template-columns: 1fr; }
-  .sidebar {
+  /* Specificity must beat sidebar.css's `.sidebar { position: relative; z-index: 3 }`
+     (same specificity, but sidebar.css loads AFTER layout.css and would win),
+     otherwise the drawer collapses into a 0px grid row and its content paints
+     over the chat with no background. */
+  .nyvexa .sidebar {
     position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
     width: min(300px, 86vw);
     transform: translateX(-105%);
@@ -536,6 +551,7 @@ body:not(:has(#welcome)) .header__tools {
     box-shadow: 24px 0 60px rgba(0, 0, 0, 0.5);
   }
   .nyvexa.sidebar-open .sidebar { transform: translateX(0); }
+  .nyvexa.sidebar-open .sidebar-scrim { display: block; }
   .header .header__menu { display: inline-flex; }
   .header { padding: 0 10px; gap: 8px; }
   .header__tagline { display: none; }
