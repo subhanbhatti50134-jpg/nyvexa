@@ -53,6 +53,10 @@ moderation decisions when appropriate.
 This Code of Conduct applies within all community spaces, and also applies when
 an individual is officially representing the community in public spaces.
 
+Security vulnerabilities are handled separately: please do not open public
+issues or discuss exploits in community spaces — follow the private reporting
+process in [SECURITY.md](SECURITY.md) instead.
+
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be

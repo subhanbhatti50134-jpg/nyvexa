@@ -1,15 +1,16 @@
 # Nyvexa
 
-Full-stack AI assistant: streaming chat, autonomous research, tool-using agent, side-by-side model comparison, and per-user knowledge bases — FastAPI + SSE backend, vanilla ES6/BEM frontend, themed around a glowing cosmic orb.
+Full-stack AI assistant: streaming chat, autonomous research, tool-using agent, side-by-side model comparison, and per-user knowledge bases — FastAPI + SSE backend, vanilla ES6/BEM frontend, premium light-SaaS interface (ivory/navy, Inter, no neon).
 
 ## Features
 
 - **Streaming chat** over Server-Sent Events (`meta`, `research`, `sources`, `token`, `done`)
 - **Modes**: `chat`, `research` (plan → search → fetch → synthesize with citations), `deep` (multi-round), `agent` (web_search, fetch_page, calculator, run_python, rag_search), `compare` (two models, two panes)
 - **Knowledge base**: upload PDF/TXT/MD/CSV/JSON/Py/HTML, vector + lexical retrieval injected into answers
-- **Mandatory auth**: email/password (PBKDF2) or **Google OAuth**; every conversation and file is scoped to its owner
+- **Mandatory auth**: email/password (PBKDF2, 600k iterations with rehash-on-login) or **Google OAuth** (per-attempt state validation); every conversation and file is scoped to its owner
 - **Free models**: NVIDIA NIM (`nvapi-…`) and OpenRouter (`:free` models) with automatic cross-provider fallback
-- Voice input/readout (browser Web Speech API), Markdown export, usage meter, PWA, SQLite persistence
+- **Light SaaS UI**: ivory `#F7F6F2` / navy `#102747` / blue `#1769C2` palette, header settings menu (auto-read replies, export, clear) and profile menu, simple brand marks, PWA
+- Voice input/readout (browser Web Speech API) with **auto-read replies** (Settings → Auto-read), Markdown export, usage meter, SQLite persistence
 
 ## Quick start (any laptop)
 
@@ -67,10 +68,22 @@ The redirect URI is derived from the request origin automatically — for produc
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | enables the Google button (redirect URI derived from request origin) |
 | `GOOGLE_REDIRECT_URI` | optional — pin the Google redirect URI instead of deriving it |
 | `NYVEXA_DATA_DIR` | SQLite + uploads directory (default `./data`) |
-| `NYVEXA_RATE_LIMIT` | requests/minute/IP |
+| `NYVEXA_RATE_LIMIT` | requests/minute/IP (chat & files; keyed per-account when authenticated) |
+| `NYVEXA_AUTH_RATE_LIMIT` | login/signup requests/minute/IP (default 10) |
 | `NYVEXA_RESEARCH_MAX_QUERIES`, `NYVEXA_RESEARCH_RESULTS`, `NYVEXA_DEEP_ROUNDS` | research depth |
 
 **Model routing:** ids ending in `:free` go to OpenRouter; prefixes `nvidia/`, `z-ai/`, `meta/`, `mistralai/`, `deepseek-ai/`, `moonshotai/`, `google/` (without `:free`) go to NVIDIA NIM. On failure the chain falls back across both providers automatically.
+
+## Security
+
+Hardening implemented on top of the base app (see [SECURITY.md](SECURITY.md) for the full policy):
+
+- **Auth**: Bearer-header tokens only (`?token=` query auth removed), PBKDF2 (600k, transparent rehash on login), OAuth state = random per-attempt value in an HttpOnly cookie, generic auth error messages
+- **Headers**: strict CSP (`script-src 'self'`) on the frontend, `X-Content-Type-Options`, `X-Frame-Options`/`frame-ancestors 'none'`, `Referrer-Policy`, `Permissions-Policy`, COOP, HSTS on HTTPS; `/api/*` exempt (OAuth bridge + Swagger docs)
+- **Rate limits**: per-IP on login/signup, per-account on chat/files, per-IP elsewhere
+- **Input**: request-size cap (6 MB → 413), `ChatRequest` field caps + strict model-id validation, sanitized SSE error events, upload content sniffing (PDF magic, NUL-byte/UTF-8 checks)
+- **Provider isolation**: SSRF-guarded web fetching (public-IP-only with per-hop redirect validation), AST-allowlisted + rlimit-sandboxed `run_python` (6s CPU, 1MB files)
+- **Regression coverage**: 41 security tests inside the suite (headers/CSP, tokens, OAuth state, validation, rate limits, body limit, SSRF, sandbox, sniffing, rehash)
 
 ## Docker
 
@@ -99,7 +112,7 @@ export HF_TOKEN=hf_…                    # HF token with write access
 ## Development
 
 ```bash
-.venv/bin/python -m pytest backend/tests/ -q   # 12 tests (mocked LLM/search, no network)
+.venv/bin/python -m pytest backend/tests/ -q   # 53 tests (12 API + 41 security; mocked LLM/search, no network)
 .venv/bin/ruff check backend/                  # lint (config in ruff.toml)
 node --check frontend/js/main.js               # JS syntax
 ```
@@ -121,7 +134,7 @@ frontend/
 
 ### API surface
 
-All `/api/*` routes require `Authorization: Bearer <token>` except: `/api/auth/{signup,login,google,google/callback,status}`, `/api/health`, `/api/models`.
+All `/api/*` routes require `Authorization: Bearer <token>` except: `/api/auth/{signup,login,google,google/callback,status}`, `/api/health`, `/api/models`. Query-string tokens (`?token=`) are intentionally not accepted.
 
 SSE example:
 
