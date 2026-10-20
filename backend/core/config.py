@@ -86,10 +86,19 @@ class Settings:
 
     max_history: int = int(os.getenv("NYVEXA_MAX_HISTORY", "24"))
     max_message_chars: int = int(os.getenv("NYVEXA_MAX_MESSAGE_CHARS", "8000"))
+    # Prefill budget: total characters of history sent per request. Long chats
+    # otherwise re-send tens of thousands of tokens every turn (slow TTFT).
+    history_char_budget: int = int(os.getenv("NYVEXA_HISTORY_CHAR_BUDGET", "30000"))
     rate_limit_per_minute: int = int(os.getenv("NYVEXA_RATE_LIMIT", "20"))
     auth_rate_limit_per_minute: int = int(os.getenv("NYVEXA_AUTH_RATE_LIMIT", "10"))
     research_max_queries: int = int(os.getenv("NYVEXA_RESEARCH_MAX_QUERIES", "3"))
     research_results_per_query: int = int(os.getenv("NYVEXA_RESEARCH_RESULTS", "3"))
+    # Bounded control-plane LLM calls (router tie-break, research planner).
+    # Free/reasoning models can take 4-9s or queue for minutes — never block
+    # the answer path on them.
+    router_timeout: float = float(os.getenv("NYVEXA_ROUTER_TIMEOUT", "3"))
+    research_plan_timeout: float = float(os.getenv("NYVEXA_RESEARCH_PLAN_TIMEOUT", "6"))
+    control_timeout: float = float(os.getenv("NYVEXA_CONTROL_TIMEOUT", "25"))
     cors_origins: list[str] = field(
         default_factory=lambda: [
             o.strip()

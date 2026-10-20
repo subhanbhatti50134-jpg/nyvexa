@@ -66,6 +66,7 @@ def build_messages(
     user_message: str,
     system: str | None = None,
     max_history: int = 24,
+    history_char_budget: int | None = None,
 ) -> list[dict[str, str]]:
     from backend.core.context import get_memory_block
 
@@ -79,11 +80,24 @@ def build_messages(
     messages: list[dict[str, str]] = [
         {"role": "system", "content": f"{base_system}\n\n{_now_context()}"}
     ]
-    for turn in history[-max_history:]:
-        role = turn.get("role")
-        content = turn.get("content", "")
+    turns: list[dict[str, str]] = []
+    for t in history[-max_history:]:
+        role, content = t.get("role"), t.get("content", "")
         if role in ("user", "assistant") and content:
-            messages.append({"role": role, "content": content})
+            turns.append({"role": role, "content": content})
+    # Prefill budget: keep the NEWEST turns until the budget is spent — long
+    # histories otherwise cost tens of thousands of prefill tokens per message.
+    if history_char_budget and history_char_budget > 0:
+        kept: list[dict[str, str]] = []
+        used = 0
+        for turn in reversed(turns):
+            size = len(turn["content"])
+            if kept and used + size > history_char_budget:
+                break
+            kept.append(turn)
+            used += size
+        turns = list(reversed(kept))
+    messages.extend(turns)
     messages.append({"role": "user", "content": user_message})
     return messages
 
@@ -148,8 +162,16 @@ async def complete_json(
     settings: Settings,
     messages: list[dict[str, str]],
     model: str | None = None,
+    max_tokens: int = 1024,
+    timeout: float | None = None,
 ) -> Any:
-    """Non-streaming completion parsed as JSON (with light repair). Walks fallback chain."""
+    """Non-streaming completion parsed as JSON (with light repair). Walks fallback chain.
+
+    `timeout` bounds each attempt (control-plane calls like the research planner
+    must never hang for the client's default 600s).
+    """
+    if timeout is None:
+        timeout = getattr(settings, "control_timeout", 25.0)
     last_error: Exception | None = None
     for provider, model_id in _candidates(settings, model)[:3]:
         if not settings.nvidia_configured and provider == "nvidia":
@@ -162,8 +184,9 @@ async def complete_json(
                 model=model_id,
                 messages=messages,
                 temperature=0.2,
-                max_tokens=1024,
+                max_tokens=max_tokens,
                 stream=False,
+                timeout=timeout,
             )
             raw = completion.choices[0].message.content or "[]"
             return _parse_json_lenient(raw)

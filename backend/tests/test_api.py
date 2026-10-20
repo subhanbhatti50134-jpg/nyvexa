@@ -69,9 +69,13 @@ def client(monkeypatch, tmp_path):
         fallback_model = "f"
         max_history = 24
         max_message_chars = 8000
+        history_char_budget = 30000
         research_max_queries = 2
         research_results_per_query = 2
         rate_limit_per_minute = 1000
+        router_timeout = 3.0
+        research_plan_timeout = 6.0
+        control_timeout = 25.0
         cors_origins = ["*"]
         configured = True
         nvidia_configured = False

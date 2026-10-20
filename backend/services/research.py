@@ -76,27 +76,63 @@ async def _gather_sources(
     emit: Emit,
     fetch_full: bool,
 ) -> tuple[list[Source], str]:
-    """Plan → search → (optionally) fetch top pages. Returns (sources, pages_text)."""
-    await emit("research", {"step": "planning", "message": "Planning research queries…"})
-    if client is not None:
-        try:
-            queries = await plan_queries(client, settings, question)
-        except Exception:
-            queries = [question[:200]]
-    else:
-        queries = [question[:200]]
+    """Plan → search → (optionally) fetch top pages. Returns (sources, pages_text).
 
+    The first search starts immediately on the raw question while the LLM
+    planner runs in parallel (bounded) — previously planning blocked the
+    whole pipeline for a 3-9s model round-trip.
+    """
+    q_short = question[:200]
     await emit(
         "research",
-        {
-            "step": "searching",
-            "message": f"Searching the web ({len(queries)} queries)…",
-            "queries": queries,
-        },
+        {"step": "planning", "message": "Searching the web…", "queries": [q_short]},
     )
-    sources = await asyncio.to_thread(
-        search_sync, queries, settings.research_results_per_query
+    first_search = asyncio.create_task(
+        asyncio.to_thread(search_sync, [q_short], settings.research_results_per_query)
     )
+
+    planned: list[str] = []
+    if client is not None:
+        try:
+            planned = await asyncio.wait_for(
+                plan_queries(client, settings, question),
+                timeout=getattr(settings, "research_plan_timeout", 6.0),
+            )
+        except Exception:
+            planned = []
+    extra = [
+        q
+        for q in planned
+        if q.strip() and q.strip().lower() != q_short.lower()
+    ][: settings.research_max_queries]
+    planned_search = (
+        asyncio.create_task(
+            asyncio.to_thread(search_sync, extra, settings.research_results_per_query)
+        )
+        if extra
+        else None
+    )
+
+    if extra:
+        await emit(
+            "research",
+            {
+                "step": "searching",
+                "message": f"Searching the web ({1 + len(extra)} queries)…",
+                "queries": [q_short, *extra],
+            },
+        )
+    results = await asyncio.gather(
+        first_search, *( [planned_search] if planned_search else [] )
+    )
+
+    seen: set[str] = set()
+    sources: list[Source] = []
+    for batch in results:
+        for s in batch:
+            if s.url not in seen:
+                seen.add(s.url)
+                sources.append(s)
     await emit("sources", {"sources": [s.to_dict(i) for i, s in enumerate(sources, start=1)]})
 
     pages_text = ""
@@ -150,21 +186,24 @@ async def stream_research(
                 # Ask the model what's still missing based on sources so far
                 context = _format_sources_block(all_sources, pages_text)
                 try:
-                    followups = await complete_json(
-                        client,
-                        settings,
-                        [
-                            {
-                                "role": "user",
-                                "content": (
-                                    "You already researched this question using these sources:\n\n"
-                                    f"{context}\n\nQuestion: {question}\n\n"
-                                    "List 1-2 NEW search queries that would fill remaining gaps. "
-                                    "Output ONLY a JSON array of strings."
-                                ),
-                            }
-                        ],
-                        model=settings.default_model,
+                    followups = await asyncio.wait_for(
+                        complete_json(
+                            client,
+                            settings,
+                            [
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        "You already researched this question using these sources:\n\n"
+                                        f"{context}\n\nQuestion: {question}\n\n"
+                                        "List 1-2 NEW search queries that would fill remaining gaps. "
+                                        "Output ONLY a JSON array of strings."
+                                    ),
+                                }
+                            ],
+                            model=settings.default_model,
+                        ),
+                        timeout=getattr(settings, "research_plan_timeout", 6.0),
                     )
                     extra_queries = [
                         q.strip()[:200] for q in followups if isinstance(q, str) and q.strip()
@@ -218,12 +257,17 @@ async def stream_research(
         f"Research question:\n{question}\n\n---\nWeb sources gathered:\n\n{context}",
         system=SYNTHESIS_SYSTEM,
         max_history=settings.max_history,
+        history_char_budget=getattr(settings, "history_char_budget", None),
     )
 
     await emit("research", {"step": "synthesizing", "message": "Synthesizing findings…"})
 
     usage_out: dict[str, Any] = {}
-    async for item in _stream_with_usage(client, settings, messages, model or settings.default_model):
+    # Lower temperature: synthesis is a grounded rewrite of provided sources —
+    # determinism reads as accuracy (fewer invented details, stable citations).
+    async for item in _stream_with_usage(
+        client, settings, messages, model or settings.default_model, temperature=0.3
+    ):
         kind, payload = item
         if kind == "token":
             yield payload
@@ -241,7 +285,11 @@ async def stream_research(
 
 
 async def _stream_with_usage(
-    client: AsyncOpenAI | None, settings: Settings, messages: list[dict[str, str]], model: str
+    client: AsyncOpenAI | None,
+    settings: Settings,
+    messages: list[dict[str, str]],
+    model: str,
+    temperature: float = 0.5,
 ) -> AsyncIterator[tuple[str, Any]]:
     """Yield ('token', text) and finally ('usage', usage_dict). Multi-provider fallback."""
     from openai import APIError
@@ -264,7 +312,7 @@ async def _stream_with_usage(
                 kwargs: dict[str, Any] = {
                     "model": candidate,
                     "messages": messages,
-                    "temperature": 0.5,
+                    "temperature": temperature,
                     "max_tokens": 4096,
                     "stream": True,
                 }
@@ -317,7 +365,12 @@ async def run_chat_only(
             "Use the following knowledge-base excerpts when relevant (cite as [KB]):\n\n"
             f"{rag_context}\n\n---\nUser question: {question}"
         )
-    messages = build_messages(history, prompt, max_history=settings.max_history)
+    messages = build_messages(
+        history,
+        prompt,
+        max_history=settings.max_history,
+        history_char_budget=getattr(settings, "history_char_budget", None),
+    )
 
     usage: dict[str, Any] = {}
     async for item in _stream_with_usage(

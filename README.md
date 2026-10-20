@@ -70,6 +70,10 @@ The redirect URI is derived from the request origin automatically — for produc
 | `NYVEXA_DATA_DIR` | SQLite + uploads directory (default `./data`) |
 | `NYVEXA_RATE_LIMIT` | requests/minute/IP (chat & files; keyed per-account when authenticated) |
 | `NYVEXA_AUTH_RATE_LIMIT` | login/signup requests/minute/IP (default 10) |
+| `NYVEXA_ROUTER_TIMEOUT` | auto-mode LLM tie-break budget in seconds (default 3 — the heuristic router is instant) |
+| `NYVEXA_RESEARCH_PLAN_TIMEOUT` | research query-planner budget in seconds (default 6; search starts in parallel) |
+| `NYVEXA_HISTORY_CHAR_BUDGET` | max characters of chat history prefilled per request (default 30000, newest kept) |
+| `NYVEXA_CONTROL_TIMEOUT` | per-attempt cap for non-streaming control-plane LLM calls (default 25) |
 | `NYVEXA_RESEARCH_MAX_QUERIES`, `NYVEXA_RESEARCH_RESULTS`, `NYVEXA_DEEP_ROUNDS` | research depth |
 
 **Model routing:** ids ending in `:free` go to OpenRouter; prefixes `nvidia/`, `z-ai/`, `meta/`, `mistralai/`, `deepseek-ai/`, `moonshotai/`, `google/` (without `:free`) go to NVIDIA NIM. On failure the chain falls back across both providers automatically.
@@ -112,7 +116,7 @@ export HF_TOKEN=hf_…                    # HF token with write access
 ## Development
 
 ```bash
-.venv/bin/python -m pytest backend/tests/ -q   # 53 tests (12 API + 41 security; mocked LLM/search, no network)
+.venv/bin/python -m pytest backend/tests/ -q   # 72 tests (API + security + routing/perf; mocked LLM/search, no network)
 .venv/bin/ruff check backend/                  # lint (config in ruff.toml)
 node --check frontend/js/main.js               # JS syntax
 ```

@@ -1,7 +1,15 @@
-"""Auto mode — a tiny router that picks chat | research | deep | agent per question."""
+"""Auto mode — instant keyword heuristic with an optional bounded LLM tie-break.
+
+The heuristic is free (0ms). An LLM classifier was measured at 3-10s per call
+on the free/reasoning model pool (nemotron reasoning burns 500-900 hidden
+tokens before answering; :free models queue), so the LLM is only consulted
+when the keywords are genuinely ambiguous (multiple categories matched) and
+only with a hard wall-clock budget.
+"""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any
@@ -34,34 +42,65 @@ _KW_TIME = re.compile(
     re.I,
 )
 _KW_DEEP = re.compile(r"\b(research|report|analysis|investigate|deep dive|compare .+ options)\b", re.I)
-_KW_AGENT = re.compile(r"\b(run|execute|calculate|compute|script|python|scrape|fetch https?://)\b", re.I)
+# Tightened: bare "run" caught "run a marathon"/"how to run Docker" and sent
+# them through the slow agent loop. Require tool-shaped targets.
+_KW_AGENT = re.compile(
+    r"\b(?:run|execute)\s+(?:python|py\b|a\s+script|the\s+script|code|this\s+code)"
+    r"|\bcalculate\b|\bcompute\b|\bscrape\b"
+    r"|fetch\s+https?://|\bpython\s+script\b",
+    re.I,
+)
+
+# Deterministic priority when keywords collide (agent evidence is strongest).
+_FALLBACK_ORDER = ("agent", "deep", "research")
+
+
+def _heuristic_hits(question: str) -> set[str]:
+    hits: set[str] = set()
+    if _KW_AGENT.search(question):
+        hits.add("agent")
+    if _KW_TIME.search(question):
+        hits.add("research")
+    if _KW_DEEP.search(question):
+        hits.add("deep")
+    return hits
 
 
 def _heuristic(question: str) -> str:
-    if _KW_AGENT.search(question):
-        return "agent"
-    if _KW_TIME.search(question):
-        return "research"
-    if _KW_DEEP.search(question):
-        return "deep"
+    hits = _heuristic_hits(question)
+    for mode in _FALLBACK_ORDER:
+        if mode in hits:
+            return mode
     return "chat"
 
 
 async def route_mode(
     client: AsyncOpenAI | None, settings: Settings, question: str
 ) -> tuple[str, str]:
-    """Return (mode, reason). Falls back to keyword heuristics on any failure."""
+    """Return (mode, reason). Instant heuristic; LLM only on ambiguity, hard-bounded."""
+    hits = _heuristic_hits(question)
+    if not hits:
+        return "chat", "heuristic"
+    if len(hits) == 1:
+        return next(iter(hits)), "keyword heuristic"
+
+    # Ambiguous: multiple keyword categories matched — spend the LLM budget here.
     fallback = _heuristic(question)
     try:
-        data: Any = await complete_json(
-            client,
-            settings,
-            [
-                {
-                    "role": "user",
-                    "content": ROUTER_PROMPT.replace("__QUESTION__", question[:400]),
-                }
-            ],
+        data: Any = await asyncio.wait_for(
+            complete_json(
+                client,
+                settings,
+                [
+                    {
+                        "role": "user",
+                        "content": ROUTER_PROMPT.replace("__QUESTION__", question[:400]),
+                    }
+                ],
+                max_tokens=160,
+                timeout=settings.router_timeout,
+            ),
+            timeout=settings.router_timeout + 1.0,
         )
         if isinstance(data, dict):
             mode = str(data.get("mode", "")).strip().lower()

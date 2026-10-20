@@ -46,7 +46,8 @@ async def stream_agent(
     """Run the multi-turn tool loop, streaming the final answer."""
     chosen = model or settings.default_model
     messages = build_messages(
-        history, question, system=AGENT_SYSTEM, max_history=settings.max_history
+        history, question, system=AGENT_SYSTEM, max_history=settings.max_history,
+        history_char_budget=getattr(settings, "history_char_budget", None),
     )
 
     collected_sources: list[dict[str, Any]] = []
