@@ -1,6 +1,6 @@
 /* Nyvexa service worker — app shell cache, network-first for API. */
 
-const CACHE = "nyvexa-v3";
+const CACHE = "nyvexa-v4";
 const SHELL = [
   "/",
   "/static/css/theme.css",
