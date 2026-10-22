@@ -161,6 +161,16 @@ class TestChatValidation:
         r = client.post("/api/chat", json={"message": "hello", "history": history})
         assert r.status_code == 422
 
+    def test_long_history_turn_accepted(self, client):
+        # Long assistant replies (>8k chars) legitimately reappear in history;
+        # the server trims them — they must not 422 the next message.
+        history = [
+            {"role": "user", "content": "question"},
+            {"role": "assistant", "content": "x" * 20000},
+        ]
+        r = client.post("/api/chat", json={"message": "hello", "history": history})
+        assert r.status_code == 200
+
     def test_invalid_model_id_rejected(self, client):
         r = client.post("/api/chat", json={"message": "hi", "model": "bad model!"})
         assert r.status_code == 200

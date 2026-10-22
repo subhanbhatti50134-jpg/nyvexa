@@ -65,6 +65,7 @@ The redirect URI is derived from the request origin automatically — for produc
 | `NVIDIA_API_KEY` | NVIDIA NIM free tier — `https://build.nvidia.com/` |
 | `OPENROUTER_API_KEY` | OpenRouter free `:free` models — `https://openrouter.ai/keys` |
 | `NYVEXA_DEFAULT_MODEL` / `NYVEXA_FALLBACK_MODEL` | default + fallback model ids |
+| `NYVEXA_FAST_MODEL` | lightweight model for background work (memory extraction) so big-model slots stay free (default nano) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | enables the Google button (redirect URI derived from request origin) |
 | `GOOGLE_REDIRECT_URI` | optional — pin the Google redirect URI instead of deriving it |
 | `NYVEXA_DATA_DIR` | SQLite + uploads directory (default `./data`) |

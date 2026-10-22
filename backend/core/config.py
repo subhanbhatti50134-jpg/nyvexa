@@ -83,6 +83,11 @@ class Settings:
         "google/gemma-4-31b-it:free,"
         "nvidia/nemotron-3.5-lightning:free",
     )
+    # Lightweight model for background/control work (memory extraction, etc.)
+    # so the big default model's worker slots stay free for user answers.
+    fast_model: str = os.getenv(
+        "NYVEXA_FAST_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+    )
 
     max_history: int = int(os.getenv("NYVEXA_MAX_HISTORY", "24"))
     max_message_chars: int = int(os.getenv("NYVEXA_MAX_MESSAGE_CHARS", "8000"))

@@ -205,3 +205,139 @@ class TestSearchSync:
             websearch._ddgs_class = monkeypatch_targets
         assert len(out) == 2  # same URLs from both queries deduped
         assert {s.url for s in out} == {"https://a.example/1", "https://a.example/2"}
+
+
+class _ChainSettings:
+    nvidia_configured = True
+    openrouter_configured = True
+    default_model = "nvidia/a"
+    fallback_model = "openrouter/b"
+
+    @property
+    def fallback_chain(self):
+        return [self.fallback_model]
+
+    def model_provider(self, model_id: str) -> str:
+        return "nvidia" if model_id.startswith("nvidia/") else "openrouter"
+
+
+def _delta_chunk(text: str):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        choices=[SimpleNamespace(delta=SimpleNamespace(content=text))], usage=None
+    )
+
+
+class _BoomStream:
+    """Raises before yielding any token (like NIM's 16/16 worker rejection)."""
+
+    def __aiter__(self):
+        async def gen():
+            raise RuntimeError("ResourceExhausted: Worker local total request limit reached (16/16)")
+            yield  # pragma: no cover
+
+        return gen()
+
+
+class _OkStream:
+    def __init__(self, tokens):
+        self._tokens = tokens
+
+    def __aiter__(self):
+        async def gen():
+            for t in self._tokens:
+                yield _delta_chunk(t)
+
+        return gen()
+
+
+class _HalfFailStream:
+    """Yields one token, then dies mid-stream."""
+
+    def __aiter__(self):
+        async def gen():
+            yield _delta_chunk("partial ")
+            raise RuntimeError("connection reset")
+
+        return gen()
+
+
+class TestMidstreamFallback:
+    def _install_chain(self, monkeypatch, streams_by_model):
+        import backend.services.llm as llm_mod
+
+        class FakeClient:
+            def __init__(self, model):
+                self._model = model
+
+            class chat:
+                class completions:
+                    @staticmethod
+                    async def create(**kwargs):
+                        model = kwargs["model"]
+                        factory = streams_by_model.get(model)
+                        if factory is None:
+                            raise RuntimeError(f"no stream for {model}")
+                        return factory()
+
+        def fake_create_client(settings, provider=None, model=None):
+            return FakeClient(model)
+
+        monkeypatch.setattr(llm_mod, "create_client", fake_create_client)
+
+    def test_failure_before_first_token_falls_back(self, monkeypatch):
+        self._install_chain(
+            monkeypatch,
+            {"nvidia/a": _BoomStream, "openrouter/b": lambda: _OkStream(["Hello", " world"])},
+        )
+        from backend.services.research import _stream_with_usage
+
+        async def collect():
+            out = []
+            async for kind, payload in _stream_with_usage(
+                None, _ChainSettings(), [{"role": "user", "content": "hi"}], "nvidia/a"
+            ):
+                if kind == "token":
+                    out.append(payload)
+            return out
+
+        tokens = asyncio.run(collect())
+        assert tokens == ["Hello", " world"]
+
+    def test_failure_after_first_token_propagates(self, monkeypatch):
+        self._install_chain(
+            monkeypatch,
+            {
+                "nvidia/a": lambda: _HalfFailStream(),
+                "openrouter/b": lambda: _OkStream(["retry"]),
+            },
+        )
+        from backend.services.research import _stream_with_usage
+
+        async def collect():
+            out = []
+            async for kind, payload in _stream_with_usage(
+                None, _ChainSettings(), [{"role": "user", "content": "hi"}], "nvidia/a"
+            ):
+                if kind == "token":
+                    out.append(payload)
+            return out
+
+        with pytest.raises(RuntimeError, match="connection reset"):
+            asyncio.run(collect())
+
+    def test_all_candidates_failing_raises_last_error(self, monkeypatch):
+        self._install_chain(
+            monkeypatch, {"nvidia/a": _BoomStream, "openrouter/b": _BoomStream}
+        )
+        from backend.services.research import _stream_with_usage
+
+        async def collect():
+            async for _ in _stream_with_usage(
+                None, _ChainSettings(), [{"role": "user", "content": "hi"}], "nvidia/a"
+            ):
+                pass
+
+        with pytest.raises(RuntimeError, match="ResourceExhausted"):
+            asyncio.run(collect())

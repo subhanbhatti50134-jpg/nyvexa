@@ -480,7 +480,9 @@ export class ChatApp {
     };
 
     const payload = {
-      message: userMessage,
+      // Mirror the server's message cap — pasting >16k chars would otherwise
+      // 422 before the request starts.
+      message: userMessage.length > 16000 ? userMessage.slice(0, 16000) : userMessage,
       history: this.history.slice(-20),
       model: this.modelSelect?.value || null,
       mode: mode === "compare" ? (this.modeSelect.dataset.baseMode || "chat") : mode,

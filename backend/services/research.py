@@ -300,6 +300,7 @@ async def _stream_with_usage(
     stream = None
     last_error: Exception | None = None
     actual_model = model
+    yielded_tokens = 0
 
     for provider, candidate in _candidates(settings, model):
         if not settings.nvidia_configured and provider == "nvidia":
@@ -327,25 +328,42 @@ async def _stream_with_usage(
             except Exception as exc:
                 last_error = exc
                 continue
-        if stream is not None:
-            break
-    if stream is None:
-        raise last_error or RuntimeError("All models failed")
-
-    async for chunk in stream:
-        if getattr(chunk, "usage", None):
-            usage = {
-                "prompt_tokens": chunk.usage.prompt_tokens,
-                "completion_tokens": chunk.usage.completion_tokens,
-                "total_tokens": chunk.usage.total_tokens,
-                "model": actual_model,
-            }
-        if chunk.choices:
-            delta = chunk.choices[0].delta.content if chunk.choices[0].delta else None
-            if delta:
-                yield ("token", delta)
-    if usage:
-        yield ("usage", usage)
+        if stream is None:
+            continue
+        # Consume the stream. Providers can fail MID-stream (e.g. NVIDIA NIM
+        # "Worker local total request limit reached (16/16)") — if nothing has
+        # been emitted yet, fall back to the next candidate instead of
+        # surfacing the error after the user already waited.
+        try:
+            async for chunk in stream:
+                if getattr(chunk, "usage", None):
+                    usage = {
+                        "prompt_tokens": chunk.usage.prompt_tokens,
+                        "completion_tokens": chunk.usage.completion_tokens,
+                        "total_tokens": chunk.usage.total_tokens,
+                        "model": actual_model,
+                    }
+                if chunk.choices:
+                    delta = chunk.choices[0].delta.content if chunk.choices[0].delta else None
+                    if delta:
+                        yielded_tokens += 1
+                        yield ("token", delta)
+            if usage:
+                yield ("usage", usage)
+            return
+        except APIError as exc:
+            last_error = exc
+            if yielded_tokens:
+                raise  # partial answer already streamed — cannot rewind cleanly
+            stream = None
+            continue
+        except Exception as exc:
+            last_error = exc
+            if yielded_tokens:
+                raise
+            stream = None
+            continue
+    raise last_error or RuntimeError("All models failed")
 
 
 async def run_chat_only(

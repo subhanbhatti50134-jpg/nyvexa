@@ -56,6 +56,12 @@ export class SSEClient {
       try {
         const data = await response.json();
         if (data?.error) detail = data.error;
+        else if (typeof data?.detail === "string") detail = data.detail;
+        else if (Array.isArray(data?.detail) && data.detail[0]) {
+          const d = data.detail[0];
+          const where = Array.isArray(d?.loc) ? d.loc.join(".") : "body";
+          detail = `Request rejected: ${d?.msg || "validation error"} (${where})`;
+        }
       } catch {
         /* keep default */
       }

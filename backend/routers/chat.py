@@ -43,7 +43,10 @@ def _spawn(coro) -> None:
 
 class ChatTurn(BaseModel):
     role: str = Field(..., max_length=20)
-    content: str = Field(..., max_length=8000)
+    # Generous bound only to stop abuse — long assistant replies legitimately
+    # exceed 8k chars; the server trims each turn to 4000 before the LLM call.
+    # (A hard 8000 cap made the NEXT message 422 after any long answer.)
+    content: str = Field(..., max_length=50000)
 
 
 class ChatRequest(BaseModel):

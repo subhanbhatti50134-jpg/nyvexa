@@ -67,6 +67,9 @@ async def extract_memories(
                     ),
                 }
             ],
+            # Background work on the small model — keeps the default model's
+            # concurrency slots (NIM free tier caps at 16/worker) for answers.
+            model=getattr(settings, "fast_model", None) or None,
         )
     except Exception:
         return []
