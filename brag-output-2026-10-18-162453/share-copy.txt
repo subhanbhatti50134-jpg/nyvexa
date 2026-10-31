@@ -1,0 +1,2 @@
+Introducing Nyvexa: streaming answers, deep research with cited sources, tool-using agents, and your own knowledge base — one AI workspace.
+Built with FastAPI, SSE streaming, and vanilla JS. 21s demo of the whole flow: prompt → autonomous research → citations → model compare.

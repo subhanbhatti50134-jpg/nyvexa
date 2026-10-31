@@ -1,0 +1,14 @@
+{
+  "duration": 21,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#composer", "bySec": 0.7 },
+    { "kind": "appearsBy", "selector": "#research-panel", "bySec": 5.2 },
+    { "kind": "appearsBy", "selector": "#s3-answer", "bySec": 9.3 },
+    { "kind": "before", "a": "#step-3", "b": "#sources-card" },
+    { "kind": "before", "a": "#sources-card", "b": "#pane-b" },
+    { "kind": "appearsBy", "selector": "#outro-mark", "bySec": 17.9 },
+    { "kind": "appearsBy", "selector": "#tagline", "bySec": 18.3 },
+    { "kind": "staysInFrame", "selector": "#composer" },
+    { "kind": "staysInFrame", "selector": "#outro-mark" }
+  ]
+}

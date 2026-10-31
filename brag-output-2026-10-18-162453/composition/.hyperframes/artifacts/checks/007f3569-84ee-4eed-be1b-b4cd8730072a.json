@@ -1,0 +1,370 @@
+{
+  "ok": false,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 7,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "composition_file_too_large",
+        "severity": "warning",
+        "message": "This HTML composition file has 490 lines. Smaller sub-compositions are easier to read, iterate on, and diff.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Split coherent scenes or layers into separate .html files under compositions/, then mount them from the parent with data-composition-src so each file stays small enough to inspect, revise, and validate independently."
+      },
+      {
+        "code": "timeline_track_too_dense",
+        "severity": "warning",
+        "message": "Track 0 has 5 timed elements in this HTML file. Smaller sub-compositions keep timelines easier to read, iterate on, and diff.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move coherent scene groups into separate .html files under compositions/ and mount them from the parent with data-composition-src so the timeline stays easier to inspect, revise, and validate."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"s1\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s1",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"s1\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"s2\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s2",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"s2\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"s3\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s3",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"s3\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"s4\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s4",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"s4\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<section id=\"s5\"> is a timeline element that contains nested <div id=\"s5-inner\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#s5",
+        "dataAttributes": {},
+        "sourceFile": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <section id=\"s5\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      }
+    ],
+    "filesScanned": 1
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": false,
+    "errorCount": 3,
+    "warningCount": 0,
+    "infoCount": 2,
+    "findings": [
+      {
+        "code": "clipped_text",
+        "severity": "error",
+        "time": 5.833,
+        "selector": "#s2-sidebar > div:nth-of-type(2) > span:nth-of-type(1)",
+        "message": "Text content is clipped by its own box.",
+        "rect": {
+          "left": 49,
+          "top": 280,
+          "right": 185.06,
+          "bottom": 308,
+          "width": 136.06,
+          "height": 28
+        },
+        "text": "FastAPI SSE patterns",
+        "fixHint": "Text is 136px x 28px inside 136px x 28px and overflows by up to 95px; widen the text box to at least ~231px, or allow wrapping with max-width/fitTextFontSize.",
+        "overflow": {
+          "right": 95
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 49,
+          "y": 280,
+          "width": 136.06,
+          "height": 28
+        },
+        "firstSeen": 5.833,
+        "lastSeen": 8.167,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          5.833,
+          8.167
+        ]
+      },
+      {
+        "code": "clipped_text",
+        "severity": "error",
+        "time": 5.833,
+        "selector": "#s2-sidebar > div:nth-of-type(3) > span:nth-of-type(1)",
+        "message": "Text content is clipped by its own box.",
+        "rect": {
+          "left": 49,
+          "top": 362,
+          "right": 212.8,
+          "bottom": 390,
+          "width": 163.8,
+          "height": 28
+        },
+        "text": "Prime number plots",
+        "fixHint": "Text is 164px x 28px inside 164px x 28px and overflows by up to 50px; widen the text box to at least ~214px, or allow wrapping with max-width/fitTextFontSize.",
+        "overflow": {
+          "right": 50
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 49,
+          "y": 362,
+          "width": 163.8,
+          "height": 28
+        },
+        "firstSeen": 5.833,
+        "lastSeen": 8.167,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          5.833,
+          8.167
+        ]
+      },
+      {
+        "code": "clipped_text",
+        "severity": "error",
+        "time": 5.833,
+        "selector": "#s2-sidebar > div:nth-of-type(4) > span:nth-of-type(1)",
+        "message": "Text content is clipped by its own box.",
+        "rect": {
+          "left": 49,
+          "top": 444,
+          "right": 223.3,
+          "bottom": 472,
+          "width": 174.3,
+          "height": 28
+        },
+        "text": "Small language models",
+        "fixHint": "Text is 174px x 28px inside 174px x 28px and overflows by up to 80px; widen the text box to at least ~254px, or allow wrapping with max-width/fitTextFontSize.",
+        "overflow": {
+          "right": 80
+        },
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 49,
+          "y": 444,
+          "width": 174.3,
+          "height": 28
+        },
+        "firstSeen": 5.833,
+        "lastSeen": 8.167,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          5.833,
+          8.167
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 1,
+        "selector": "#ph",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 321,
+          "top": 530,
+          "right": 753.14,
+          "bottom": 579,
+          "width": 432.14,
+          "height": 49
+        },
+        "containerSelector": "#typed > span:nth-of-type(1)",
+        "text": "Ask Nyvexa anything…",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 321,
+          "y": 530,
+          "width": 432.14,
+          "height": 49
+        },
+        "firstSeen": 1,
+        "lastSeen": 1,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          1
+        ]
+      },
+      {
+        "code": "text_occluded",
+        "severity": "info",
+        "time": 1.167,
+        "selector": "#typed > span:nth-of-type(5)",
+        "message": "Text is hidden beneath an opaque element.",
+        "rect": {
+          "left": 414.33,
+          "top": 530,
+          "right": 436.8,
+          "bottom": 579,
+          "width": 22.47,
+          "height": 49
+        },
+        "containerSelector": "#caret",
+        "text": "a",
+        "fixHint": "Give the text its own zone, raise its stacking order above the covering element, or mark intentional layering with data-layout-allow-occlusion.",
+        "coveredFraction": 0.11,
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 414.33,
+          "y": 530,
+          "width": 22.47,
+          "height": 49
+        },
+        "firstSeen": 1.167,
+        "lastSeen": 1.167,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          1.167
+        ]
+      }
+    ],
+    "duration": 21,
+    "samples": [
+      1.167,
+      3.5,
+      5.833,
+      8.167,
+      10.5,
+      12.833,
+      15.167,
+      17.5,
+      19.833
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 5,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "specPath": "/home/muhammadsubhan/Nyvexa AI/brag-output-2026-10-18-162453/composition/index.motion.json",
+    "samples": 300
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      1.167,
+      5.833,
+      10.5,
+      15.167,
+      19.833
+    ],
+    "checked": 88,
+    "passed": 88
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}
