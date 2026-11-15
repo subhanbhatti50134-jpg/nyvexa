@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Backend tests + lint + JS syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt ruff
+
+      - name: Ruff lint (backend)
+        run: ruff check backend/
+
+      - name: Test suite (72 tests, mocked LLM/search, no network)
+        run: python -m pytest backend/tests/ -q
+
+      - name: JS syntax check (frontend)
+        run: |
+          for f in frontend/js/main.js frontend/js/chat.js frontend/js/history.js frontend/js/streaming.js frontend/js/api.js frontend/js/voice.js; do
+            [ -f "$f" ] && node --check "$f"
+          done
