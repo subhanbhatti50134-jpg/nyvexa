@@ -1,5 +1,7 @@
 # Nyvexa
 
+![Screenshot of the Nyvexa interface](docs/images/nyvexa.png)
+
 Full-stack AI assistant: streaming chat, autonomous research, tool-using agent, side-by-side model comparison, and per-user knowledge bases — FastAPI + SSE backend, vanilla ES6/BEM frontend, premium light-SaaS interface (ivory/navy, Inter, no neon).
 
 ## Features
